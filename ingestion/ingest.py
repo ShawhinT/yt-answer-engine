@@ -1,9 +1,9 @@
 """Main video ingestion script."""
 
 import os
-import re
 import time
 import requests
+import isodate
 from dotenv import load_dotenv
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound
@@ -14,17 +14,6 @@ from . import database
 load_dotenv()
 API_KEY = os.getenv("YOUTUBE_API_KEY")
 CHANNEL_ID = "UCa9gErQ9AE5jT2DZLjXBIdA"
-
-
-def parse_duration_to_seconds(duration: str) -> int:
-    """Parse ISO 8601 duration (e.g., PT1M30S) to seconds."""
-    match = re.match(r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?', duration)
-    if not match:
-        return 0
-    hours = int(match.group(1) or 0)
-    minutes = int(match.group(2) or 0)
-    seconds = int(match.group(3) or 0)
-    return hours * 3600 + minutes * 60 + seconds
 
 
 def get_video_durations(video_ids: list[str]) -> dict[str, int]:
@@ -45,7 +34,7 @@ def get_video_durations(video_ids: list[str]) -> dict[str, int]:
 
         for item in response.json().get("items", []):
             duration_str = item["contentDetails"]["duration"]
-            durations[item["id"]] = parse_duration_to_seconds(duration_str)
+            durations[item["id"]] = int(isodate.parse_duration(duration_str).total_seconds())
 
     return durations
 
@@ -151,7 +140,7 @@ def get_transcript(video_id: str, max_retries: int = 3) -> str | None:
         except Exception as e:
             if attempt < max_retries - 1:
                 print(f"    Attempt {attempt + 1} failed, retrying in 1.5s...")
-                time.sleep((attempt + 1)^(1.5) * 1.5) # exponential backoff
+                time.sleep(((attempt + 1) ** 1.5) * 1.5) # exponential backoff
             else:
                 print(f"    Error fetching transcript after {max_retries} attempts: {e}")
                 return None
