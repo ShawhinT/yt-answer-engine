@@ -151,7 +151,7 @@ def get_transcript(video_id: str, max_retries: int = 3) -> str | None:
         except Exception as e:
             if attempt < max_retries - 1:
                 print(f"    Attempt {attempt + 1} failed, retrying in 1.5s...")
-                time.sleep(1.5)
+                time.sleep((attempt + 1)^(1.5) * 1.5) # exponential backoff
             else:
                 print(f"    Error fetching transcript after {max_retries} attempts: {e}")
                 return None
@@ -180,8 +180,8 @@ def main():
     # 4. Filter out videos shorter than 45 seconds
     print("Filtering short videos...")
     durations = get_video_durations(video_ids)
-    video_ids = [vid for vid in video_ids if durations.get(vid, 0) >= 45]
-    print(f"Kept {len(video_ids)} videos (>= 45 sec)")
+    video_ids = [vid for vid in video_ids if durations.get(vid, 0) > 50]
+    print(f"Kept {len(video_ids)} videos (> 50 sec)")
     print()
 
     # 5. For each video: fetch title, transcript, and insert
