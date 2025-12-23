@@ -45,6 +45,8 @@ All search methods in `utils/` return `list[tuple[video_id, score]]`:
 ## Core Workflows
 
 ### 1. Data Ingestion
+
+**Initial ingestion** (fetch all videos from channel):
 ```bash
 python -m data_ingestion.ingest
 ```
@@ -54,7 +56,12 @@ python -m data_ingestion.ingest
 - Stores in SQLite `videos` table
 - Rate limited to 1.05s between videos
 
-After ingestion, sync to ChromaDB:
+**Incremental update** (fetch only new videos):
+```bash
+python -m data_ingestion.update
+```
+
+**Sync to ChromaDB** (after any database changes):
 ```bash
 python -m data_ingestion.sync_chroma
 ```
@@ -99,9 +106,9 @@ print(response.citations)  # list[Citation(video_id, title)]
 ## Data Flow
 
 1. **Ingestion**: YouTube API → SQLite + ChromaDB
-2. **Query Generation**: Video content + YouTube comments → OpenAI (gpt-4.1-2025-04-14) → Synthetic queries with splits (train/validation/test)
-3. **Retrieval Eval**: Queries → Search methods → Metrics (MRR, Recall@K) → JSONL results
-4. **Response Eval**: Queries + Retrieved videos → OpenAI (gpt-4.1-2025-04-14) → Answers + Citations → JSONL results
+2. **Query Generation**: Video content + YouTube comments → OpenAI (gpt-4.1-2025-04-14) → Synthetic queries with splits (train/validation/test) → `retrieval_eval/query_gen/data/queries.csv`
+3. **Retrieval Eval**: Queries → Search methods → Metrics (MRR, Recall@K) → `retrieval_eval/data/eval_results.jsonl`
+4. **Response Eval**: `eval_results.jsonl` (hybrid retrieval) → OpenAI (gpt-4.1-2025-04-14) → Answers + Citations → `response_eval/data/response_results.jsonl`
 
 ## Key Implementation Details
 
@@ -132,8 +139,22 @@ Main notebook: `sandbox.ipynb`
 
 ### Streamlit Viewers
 - `retrieval_eval/analysis.py` - Compare retrieval methods, filter by difficulty/query type
-- `response_eval/viewer.py` - Review generated answers and citations
+- `response_eval/viewer.py` - Review generated answers and citations, tag responses, export error analysis
 - `retrieval_eval/query_gen/viewer.py` - Browse generated queries
+
+## Evaluation Data Files
+
+- **Query Generation**:
+  - `retrieval_eval/query_gen/data/raw_queries.jsonl` - Raw LLM-generated queries with metadata
+  - `retrieval_eval/query_gen/data/queries.csv` - Processed queries with train/validation/test splits
+
+- **Retrieval Evaluation**:
+  - `retrieval_eval/data/eval_results.jsonl` - Results from all search methods with metrics
+
+- **Response Evaluation**:
+  - `response_eval/data/response_results.jsonl` - Generated answers with citations
+  - `response_eval/data/error_analysis-*.csv` - Error analysis exports with timestamps
+  - `response_eval/data/tags.json` - User-defined tags for categorizing response quality
 
 ## Important Notes
 
@@ -141,4 +162,4 @@ Main notebook: `sandbox.ipynb`
 - Many scripts add project root to `sys.path` for imports
 - Database path is `data/videos.db` (absolute or relative from project root)
 - ChromaDB path is `data/chroma/` (PersistentClient)
-- Evaluation results are JSONL files in respective `data/` subdirectories
+- `.bak` files are automatically created when regenerating evaluation results
