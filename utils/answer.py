@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from ingestion.database import get_video_by_id
+from data_ingestion.database import get_video_by_id
 from utils import search_hybrid, search_bm25, search_chroma
 
 # Load environment variables

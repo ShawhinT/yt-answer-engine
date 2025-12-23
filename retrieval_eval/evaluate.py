@@ -12,7 +12,7 @@ from utils.search_bm25 import search_with_scores as bm25_search
 from utils.search_chroma import search_with_scores as chroma_search
 from utils.search_hybrid import search_with_scores as hybrid_search
 
-QUERIES_PATH = Path("query_gen/data/queries.csv")
+QUERIES_PATH = Path("retrieval_eval/query_gen/data/queries.csv")
 RESULTS_PATH = Path("retrieval_eval/data/eval_results.jsonl")
 
 METHODS = ["bm25", "chroma", "hybrid"]
