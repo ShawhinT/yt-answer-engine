@@ -102,7 +102,8 @@ def load_eval_metadata(query_id: str) -> dict | None:
         query_id: The query ID to load metadata for.
 
     Returns:
-        Dictionary with query_type, difficulty, and split, or None if not found.
+        Dictionary with query metadata and retrieval results, or None if not found.
+        Includes: query_type, difficulty, split, and retrieval results for BM25, Chroma, and Hybrid.
     """
     eval_path = Path(__file__).parent.parent / "retrieval_eval" / "data" / "eval_results.jsonl"
 
@@ -120,7 +121,18 @@ def load_eval_metadata(query_id: str) -> dict | None:
                     return {
                         "query_type": record.get("query_type"),
                         "difficulty": record.get("difficulty"),
-                        "split": record.get("split")
+                        "split": record.get("split"),
+                        # BM25 results
+                        "bm25_retrieved_ids": record.get("bm25_retrieved_ids", []),
+                        "bm25_scores": record.get("bm25_scores", []),
+                        "bm25_gold_rank": record.get("bm25_gold_rank", -1),
+                        # Chroma results
+                        "chroma_retrieved_ids": record.get("chroma_retrieved_ids", []),
+                        "chroma_scores": record.get("chroma_scores", []),
+                        "chroma_gold_rank": record.get("chroma_gold_rank", -1),
+                        # Hybrid results
+                        "hybrid_scores": record.get("hybrid_scores", []),
+                        "hybrid_gold_rank": record.get("hybrid_gold_rank", -1),
                     }
             except (json.JSONDecodeError, KeyError):
                 continue
@@ -400,7 +412,7 @@ with st.sidebar:
     
     if total_queries > 0:
         progress = annotated_queries / total_queries
-        st.progress(progress, text=f"{progress:.0%} complete")
+        st.progress(progress, text=f"{progress:.0%} annotated")
     
     st.divider()
     
@@ -480,7 +492,7 @@ with st.sidebar:
                     vid_col1, vid_col2 = st.columns(2)
 
                     with vid_col1:
-                        if st.button("◀ Prev Video", use_container_width=True, key="nav_prev_video"):
+                        if st.button("Prev Video ◀", use_container_width=True, key="nav_prev_video"):
                             new_video_idx = (current_video_idx - 1) % len(unique_videos)
                             new_video_id = unique_videos[new_video_idx]
                             first_query = get_first_query_for_video(new_video_id)
@@ -724,4 +736,92 @@ else:
                         st.session_state.available_tags.remove(tag)
                     save_tags(st.session_state.available_tags)
                     st.rerun()
+
+        # ============================================================================
+        # Retrieval Results Section
+        # ============================================================================
+
+        st.divider()
+
+        with st.expander("📊 Retrieval Results", expanded=False):
+            st.caption("Comparison of retrieval results from different search methods.")
+
+            # Create three columns for BM25, Chroma, and Hybrid
+            col_bm25, col_chroma, col_hybrid = st.columns(3)
+
+            gold_video_id = result.get("gold_video_id")
+
+            # BM25 Column
+            with col_bm25:
+                st.subheader("BM25")
+                bm25_ids = result.get("bm25_retrieved_ids", [])
+                bm25_scores = result.get("bm25_scores", [])
+                bm25_gold_rank = result.get("bm25_gold_rank", -1)
+
+                if bm25_ids:
+                    for rank, (vid, score) in enumerate(zip(bm25_ids, bm25_scores), 1):
+                        video = get_video_by_id(vid)
+                        title = video.get("title", vid) if video else vid
+
+                        # Check if this is the gold video
+                        is_gold = (vid == gold_video_id)
+                        rank_label = f"#{rank}"
+
+                        # Format display
+                        if is_gold:
+                            st.markdown(f"**{rank_label} ⭐** [{title}](https://youtube.com/watch?v={vid})")
+                        else:
+                            st.markdown(f"{rank_label} [{title}](https://youtube.com/watch?v={vid})")
+
+                        st.caption(f"Score: {score:.4f}")
+                else:
+                    st.caption("No results retrieved")
+
+            # Chroma Column
+            with col_chroma:
+                st.subheader("Chroma")
+                chroma_ids = result.get("chroma_retrieved_ids", [])
+                chroma_scores = result.get("chroma_scores", [])
+                chroma_gold_rank = result.get("chroma_gold_rank", -1)
+
+                if chroma_ids:
+                    for rank, (vid, score) in enumerate(zip(chroma_ids, chroma_scores), 1):
+                        video = get_video_by_id(vid)
+                        title = video.get("title", vid) if video else vid
+
+                        is_gold = (vid == gold_video_id)
+                        rank_label = f"#{rank}"
+
+                        if is_gold:
+                            st.markdown(f"**{rank_label} ⭐** [{title}](https://youtube.com/watch?v={vid})")
+                        else:
+                            st.markdown(f"{rank_label} [{title}](https://youtube.com/watch?v={vid})")
+
+                        st.caption(f"Distance: {score:.4f}")
+                else:
+                    st.caption("No results retrieved")
+
+            # Hybrid Column
+            with col_hybrid:
+                st.subheader("Hybrid (RRF)")
+                hybrid_ids = result.get("hybrid_retrieved_ids", [])
+                hybrid_scores = result.get("hybrid_scores", [])
+                hybrid_gold_rank = result.get("hybrid_gold_rank", -1)
+
+                if hybrid_ids:
+                    for rank, (vid, score) in enumerate(zip(hybrid_ids, hybrid_scores), 1):
+                        video = get_video_by_id(vid)
+                        title = video.get("title", vid) if video else vid
+
+                        is_gold = (vid == gold_video_id)
+                        rank_label = f"#{rank}"
+
+                        if is_gold:
+                            st.markdown(f"**{rank_label} ⭐** [{title}](https://youtube.com/watch?v={vid})")
+                        else:
+                            st.markdown(f"{rank_label} [{title}](https://youtube.com/watch?v={vid})")
+
+                        st.caption(f"RRF Score: {score:.4f}")
+                else:
+                    st.caption("No results retrieved")
 
