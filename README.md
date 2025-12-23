@@ -170,23 +170,23 @@ python -m data_ingestion.sync_chroma
 **Generate synthetic queries**:
 
 ```bash
-python -m retrieval_eval.query_gen.run
+python -m evals.retrieval.query_gen.run
 ```
 
-Output: `retrieval_eval/query_gen/data/queries.csv`
+Output: `evals/retrieval/query_gen/data/queries.csv`
 
 **Run retrieval benchmarks**:
 
 ```bash
-python -m retrieval_eval.evaluate
+python -m evals.retrieval.evaluate
 ```
 
-Output: `retrieval_eval/data/eval_results.jsonl`
+Output: `evals/retrieval/data/eval_results.jsonl`
 
 **View results interactively**:
 
 ```bash
-streamlit run retrieval_eval/analysis.py
+streamlit run evals/retrieval/analysis.py
 ```
 
 Features:
@@ -199,16 +199,16 @@ Features:
 **Generate answers** (uses hybrid retrieval by default):
 
 ```bash
-python -m response_eval.generate [--limit N]
+python -m evals.response.generate [--limit N]
 ```
 
 - `--limit N`: Process only first N queries (useful for testing)
-- Output: `response_eval/data/response_results.jsonl`
+- Output: `evals/response/data/response_results.jsonl`
 
 **View and analyze responses**:
 
 ```bash
-streamlit run response_eval/viewer.py
+streamlit run evals/response/viewer.py
 ```
 
 Features:
@@ -230,7 +230,7 @@ Main development notebook: `sandbox.ipynb`
 ### Query Browser
 
 ```bash
-streamlit run retrieval_eval/query_gen/viewer.py
+streamlit run evals/retrieval/query_gen/viewer.py
 ```
 
 Browse all generated queries with metadata, difficulty levels, and splits.
@@ -244,16 +244,17 @@ yt-answer-engine/
 │   ├── update.py         # Incremental updates
 │   ├── sync_chroma.py    # Vector DB synchronization
 │   └── database.py       # SQLite operations
-├── retrieval_eval/       # Search method benchmarking
-│   ├── evaluate.py       # Run retrieval benchmarks
-│   ├── analysis.py       # Streamlit retrieval viewer
-│   └── query_gen/        # Synthetic query generation
-│       ├── run.py        # Query generation workflow
-│       ├── functions.py  # Query generation logic
-│       └── viewer.py     # Query browser
-├── response_eval/        # Answer quality evaluation
-│   ├── generate.py       # Answer generation
-│   └── viewer.py         # Streamlit response viewer
+├── evals/                # Evaluation framework
+│   ├── retrieval/        # Search method benchmarking
+│   │   ├── evaluate.py   # Run retrieval benchmarks
+│   │   ├── analysis.py   # Streamlit retrieval viewer
+│   │   └── query_gen/    # Synthetic query generation
+│   │       ├── run.py    # Query generation workflow
+│   │       ├── functions.py  # Query generation logic
+│   │       └── viewer.py # Query browser
+│   └── response/         # Answer quality evaluation
+│       ├── generate.py   # Answer generation
+│       └── viewer.py     # Streamlit response viewer
 ├── utils/                # Search implementations
 │   ├── answer.py         # Answer generation API
 │   ├── search_bm25.py    # BM25 keyword search
@@ -311,10 +312,10 @@ This project is licensed under the Apache 2.0 License. See [`LICENSE`](./LICENSE
 ### Data Files
 
 Evaluation data is stored in JSONL and CSV formats:
-- `retrieval_eval/query_gen/data/queries.csv` - Generated queries with splits
-- `retrieval_eval/data/eval_results.jsonl` - Retrieval benchmark results
-- `response_eval/data/response_results.jsonl` - Generated answers with citations
-- `response_eval/data/error_analysis-*.csv` - Tagged error analysis exports
+- `evals/retrieval/query_gen/data/queries.csv` - Generated queries with splits
+- `evals/retrieval/data/eval_results.jsonl` - Retrieval benchmark results
+- `evals/response/data/response_results.jsonl` - Generated answers with citations
+- `evals/response/data/error_analysis-*.csv` - Tagged error analysis exports
 
 ### Notes
 

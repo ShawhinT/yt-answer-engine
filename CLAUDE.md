@@ -71,22 +71,22 @@ python -m data_ingestion.sync_chroma
 **Retrieval Evaluation** (comparing BM25, Chroma, Hybrid):
 ```bash
 # Generate synthetic queries from video content + YouTube comments
-python -m retrieval_eval.query_gen.run
+python -m evals.retrieval.query_gen.run
 
 # Run retrieval eval on validation/test splits
-python -m retrieval_eval.evaluate
+python -m evals.retrieval.evaluate
 
 # View results with interactive Streamlit viewer
-streamlit run retrieval_eval/analysis.py
+streamlit run evals/retrieval/analysis.py
 ```
 
 **Response Evaluation** (answer quality):
 ```bash
 # Generate answers using hybrid retrieval results
-python -m response_eval.generate [--limit N]
+python -m evals.response.generate [--limit N]
 
 # View results with interactive Streamlit viewer
-streamlit run response_eval/viewer.py
+streamlit run evals/response/viewer.py
 ```
 
 ### 3. Answer Generation
@@ -106,9 +106,9 @@ print(response.citations)  # list[Citation(video_id, title)]
 ## Data Flow
 
 1. **Ingestion**: YouTube API → SQLite + ChromaDB
-2. **Query Generation**: Video content + YouTube comments → OpenAI (gpt-4.1-2025-04-14) → Synthetic queries with splits (train/validation/test) → `retrieval_eval/query_gen/data/queries.csv`
-3. **Retrieval Eval**: Queries → Search methods → Metrics (MRR, Recall@K) → `retrieval_eval/data/eval_results.jsonl`
-4. **Response Eval**: `eval_results.jsonl` (hybrid retrieval) → OpenAI (gpt-4.1-2025-04-14) → Answers + Citations → `response_eval/data/response_results.jsonl`
+2. **Query Generation**: Video content + YouTube comments → OpenAI (gpt-4.1-2025-04-14) → Synthetic queries with splits (train/validation/test) → `evals/retrieval/query_gen/data/queries.csv`
+3. **Retrieval Eval**: Queries → Search methods → Metrics (MRR, Recall@K) → `evals/retrieval/data/eval_results.jsonl`
+4. **Response Eval**: `eval_results.jsonl` (hybrid retrieval) → OpenAI (gpt-4.1-2025-04-14) → Answers + Citations → `evals/response/data/response_results.jsonl`
 
 ## Key Implementation Details
 
@@ -121,7 +121,7 @@ print(response.citations)  # list[Citation(video_id, title)]
 ### Query Generation
 - Uses video title, transcript, and YouTube comments as input
 - Generates 9 queries per video (3 easy, 3 medium, 3 hard) across multiple query types
-- Queries stored in `retrieval_eval/query_gen/data/queries.csv` with train/validation/test splits
+- Queries stored in `evals/retrieval/query_gen/data/queries.csv` with train/validation/test splits
 
 ### Hybrid Search (RRF)
 - Combines BM25 and ChromaDB rankings using Reciprocal Rank Fusion
@@ -138,23 +138,23 @@ jupyter lab
 Main notebook: `sandbox.ipynb`
 
 ### Streamlit Viewers
-- `retrieval_eval/analysis.py` - Compare retrieval methods, filter by difficulty/query type
-- `response_eval/viewer.py` - Review generated answers and citations, tag responses, export error analysis
-- `retrieval_eval/query_gen/viewer.py` - Browse generated queries
+- `evals/retrieval/analysis.py` - Compare retrieval methods, filter by difficulty/query type
+- `evals/response/viewer.py` - Review generated answers and citations, tag responses, export error analysis
+- `evals/retrieval/query_gen/viewer.py` - Browse generated queries
 
 ## Evaluation Data Files
 
 - **Query Generation**:
-  - `retrieval_eval/query_gen/data/raw_queries.jsonl` - Raw LLM-generated queries with metadata
-  - `retrieval_eval/query_gen/data/queries.csv` - Processed queries with train/validation/test splits
+  - `evals/retrieval/query_gen/data/raw_queries.jsonl` - Raw LLM-generated queries with metadata
+  - `evals/retrieval/query_gen/data/queries.csv` - Processed queries with train/validation/test splits
 
 - **Retrieval Evaluation**:
-  - `retrieval_eval/data/eval_results.jsonl` - Results from all search methods with metrics
+  - `evals/retrieval/data/eval_results.jsonl` - Results from all search methods with metrics
 
 - **Response Evaluation**:
-  - `response_eval/data/response_results.jsonl` - Generated answers with citations
-  - `response_eval/data/error_analysis-*.csv` - Error analysis exports with timestamps
-  - `response_eval/data/tags.json` - User-defined tags for categorizing response quality
+  - `evals/response/data/response_results.jsonl` - Generated answers with citations
+  - `evals/response/data/error_analysis-*.csv` - Error analysis exports with timestamps
+  - `evals/response/data/tags.json` - User-defined tags for categorizing response quality
 
 ## Important Notes
 

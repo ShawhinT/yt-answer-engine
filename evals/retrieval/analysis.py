@@ -4,7 +4,7 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
-RESULTS_PATH = Path("retrieval_eval/data/eval_results.jsonl")
+RESULTS_PATH = Path("evals/retrieval/data/eval_results.jsonl")
 
 METHODS = ["bm25", "chroma", "hybrid"]
 

@@ -19,8 +19,8 @@ from data_ingestion.database import get_video_by_id
 load_dotenv()
 
 # Paths
-EVAL_RESULTS_PATH = Path("retrieval_eval/data/eval_results.jsonl")
-OUTPUT_PATH = Path("response_eval/data/response_results.jsonl")
+EVAL_RESULTS_PATH = Path("evals/retrieval/data/eval_results.jsonl")
+OUTPUT_PATH = Path("evals/response/data/response_results.jsonl")
 PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
 
 

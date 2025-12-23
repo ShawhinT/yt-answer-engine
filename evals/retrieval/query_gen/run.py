@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from data_ingestion.database import get_all_video_ids, get_video_by_id
-from retrieval_eval.query_gen.functions import (
+from evals.retrieval.query_gen.functions import (
     get_all_comments,
     generate_queries,
     save_queries_to_jsonl

@@ -105,7 +105,7 @@ def load_eval_metadata(query_id: str) -> dict | None:
         Dictionary with query metadata and retrieval results, or None if not found.
         Includes: query_type, difficulty, split, and retrieval results for BM25, Chroma, and Hybrid.
     """
-    eval_path = Path(__file__).parent.parent / "retrieval_eval" / "data" / "eval_results.jsonl"
+    eval_path = Path(__file__).parent.parent / "evals" / "retrieval" / "data" / "eval_results.jsonl"
 
     if not eval_path.exists():
         return None
