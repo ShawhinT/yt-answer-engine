@@ -153,14 +153,8 @@ def generate_queries(
     else:
         comments_text = "(No comments available)"
 
-    # Construct user message with all three inputs
-    user_message = f"""Video Title: {video_title}
-
-Transcript:
-{transcript}
-
-Real YouTube Comments:
-{comments_text}"""
+    # Construct user message with all three inputs (one line)
+    user_message = f"Video Title: {video_title}\n\nTranscript:\n{transcript}\n\nReal YouTube Comments:\n{comments_text}"
 
     # Call OpenAI API
     response = client.responses.parse(
