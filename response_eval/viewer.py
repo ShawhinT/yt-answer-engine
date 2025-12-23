@@ -80,6 +80,14 @@ def load_query_result(query_id: str) -> dict | None:
                     if eval_metadata:
                         record.update(eval_metadata)
 
+                    # Auto-add retrieval_failure tag if gold video not retrieved
+                    gold_video_id = record.get("gold_video_id")
+                    hybrid_retrieved = record.get("hybrid_retrieved_ids", [])
+
+                    if gold_video_id and gold_video_id not in hybrid_retrieved:
+                        if "retrieval_failure" not in record["tags"]:
+                            record["tags"].append("retrieval_failure")
+
                     return record
             except (json.JSONDecodeError, KeyError):
                 continue
@@ -370,6 +378,11 @@ if "initialized" not in st.session_state:
     st.session_state.query_list = load_all_query_ids()
     st.session_state.available_tags = load_tags()
 
+    # Ensure retrieval_failure tag exists
+    if "retrieval_failure" not in st.session_state.available_tags:
+        st.session_state.available_tags.append("retrieval_failure")
+        save_tags(st.session_state.available_tags)
+
 
 # ============================================================================
 # Sidebar - Navigation & Progress
@@ -637,11 +650,19 @@ else:
             st.subheader("Failure Tags")
             available_tags = st.session_state.available_tags
             current_tags = result.get("tags", [])
-            
+
             if available_tags:
                 for tag in available_tags:
+                    # Check if this is an auto-added tag
+                    is_auto_added = (
+                        tag == "retrieval_failure" and
+                        result.get("gold_video_id") not in result.get("hybrid_retrieved_ids", [])
+                    )
+
+                    label = f"{tag} (auto)" if is_auto_added else tag
+
                     st.checkbox(
-                        tag,
+                        label,
                         value=tag in current_tags,
                         key=f"tag_{query_id}_{tag}"
                     )
