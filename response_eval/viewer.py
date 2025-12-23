@@ -20,7 +20,7 @@ from data_ingestion.database import get_video_by_id
 
 JSONL_PATH = Path(__file__).parent / "data" / "response_results.jsonl"
 TAGS_PATH = Path(__file__).parent / "data" / "tags.json"
-CSV_OUTPUT_PATH = Path(__file__).parent / "data" / "error_analysis.csv"
+CSV_OUTPUT_DIR = Path(__file__).parent / "data"
 
 
 # ============================================================================
@@ -306,14 +306,16 @@ def get_first_query_for_video(gold_video_id: str) -> str | None:
 
 def export_to_csv() -> dict:
     """
-    Export all annotated queries to CSV.
-    
+    Export all annotated queries to CSV with timestamp in filename.
+
     Returns:
-        Stats dictionary with export counts.
+        Stats dictionary with export counts and file path.
     """
+    from datetime import datetime
+
     # Load all tags for column headers
     all_tags = load_tags()
-    
+
     # Load all query results
     results = []
     with open(JSONL_PATH, 'r', encoding='utf-8') as f:
@@ -328,19 +330,19 @@ def export_to_csv() -> dict:
                 results.append(record)
             except (json.JSONDecodeError, KeyError):
                 continue
-    
+
     if not results:
-        return {"total": 0, "annotated": 0}
-    
+        return {"total": 0, "annotated": 0, "path": None}
+
     # Build CSV rows
     rows = []
     annotated_count = 0
-    
+
     for record in results:
         has_annotation = bool(record["notes"].strip() or record["tags"])
         if has_annotation:
             annotated_count += 1
-        
+
         row = {
             "query_id": record["query_id"],
             "query": record["query"],
@@ -348,28 +350,33 @@ def export_to_csv() -> dict:
             "notes": record["notes"],
             "tags": ",".join(record["tags"]),
         }
-        
+
         # Add boolean column for each defined tag
         for tag in all_tags:
             row[f"tag_{tag}"] = 1 if tag in record["tags"] else 0
-        
+
         rows.append(row)
-    
+
+    # Generate timestamped filename
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    csv_filename = f"error_analysis-{timestamp}.csv"
+    csv_path = CSV_OUTPUT_DIR / csv_filename
+
     # Write CSV
-    CSV_OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    
+    CSV_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
     fieldnames = ["query_id", "query", "response", "notes", "tags"]
     fieldnames.extend([f"tag_{tag}" for tag in all_tags])
-    
-    with open(CSV_OUTPUT_PATH, 'w', newline='', encoding='utf-8') as f:
+
+    with open(csv_path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
-    
+
     return {
         "total": len(results),
         "annotated": annotated_count,
-        "path": str(CSV_OUTPUT_PATH)
+        "path": str(csv_path)
     }
 
 
@@ -517,22 +524,18 @@ with st.sidebar:
     st.subheader("Export")
     if st.button("📤 Export to CSV", use_container_width=True):
         stats = export_to_csv()
-        
+
         if stats["total"] == 0:
             st.warning("No queries to export.")
         else:
+            filepath = stats.get("path", "")
+            filename = Path(filepath).name if filepath else "unknown"
             st.success(f"""
             Export complete!
             - Total: {stats['total']} queries
             - Annotated: {stats['annotated']} queries
+            - File: {filename}
             """)
-    
-    # Show last export info
-    if CSV_OUTPUT_PATH.exists():
-        import datetime
-        mtime = CSV_OUTPUT_PATH.stat().st_mtime
-        last_export = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M")
-        st.caption(f"Last export: {last_export}")
 
 
 # ============================================================================
