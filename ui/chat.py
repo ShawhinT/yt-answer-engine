@@ -27,6 +27,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from utils.answer import generate_answer, Citation
 from data_ingestion.database import get_video_by_id
+from utils import search_hybrid, search_bm25, search_chroma
 
 # Load environment variables
 load_dotenv()
@@ -118,11 +119,24 @@ def handle_user_input(user_query: str):
         "timestamp": timestamp,
     })
 
-    # 2. Generate answer
+    # 2. Call search function directly to get retrieved video IDs
     search_method = st.session_state.search_method
     num_results = st.session_state.num_results
 
+    # Select search function
+    search_functions = {
+        "hybrid": search_hybrid.search_with_scores,
+        "bm25": search_bm25.search_with_scores,
+        "chroma": search_chroma.search_with_scores,
+    }
+    search_fn = search_functions[search_method]
+
     try:
+        # Get retrieved video IDs (before generate_answer)
+        search_results = search_fn(user_query, limit=num_results)
+        retrieved_ids = [video_id for video_id, _ in search_results]
+
+        # Generate answer (this does its own search internally - redundant but safe)
         with st.spinner("Thinking..."):
             answer_response = generate_answer(
                 query=user_query,
@@ -145,7 +159,7 @@ def handle_user_input(user_query: str):
         "query_id": query_id,
         "timestamp": timestamp,
         "citations": answer_response.citations,
-        "retrieved_ids": [c.video_id for c in answer_response.citations],
+        "retrieved_ids": retrieved_ids,  # Now shows all retrieved videos, not just cited
         "search_method": search_method,
         "num_results": num_results,
     })
