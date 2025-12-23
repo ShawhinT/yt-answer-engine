@@ -545,6 +545,10 @@ else:
                 if result.get("difficulty"):
                     meta_parts.append(f"`{result['difficulty']}`")
                 st.caption(" • ".join(meta_parts))
+
+            # Display dataset/split on second line
+            if result.get("split"):
+                st.caption(f"`{result['split']}`")
         
         with row1_response:
             st.subheader("Response")
