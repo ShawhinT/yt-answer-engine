@@ -116,7 +116,7 @@ Do **not** ask follow‑up questions to clarify level.
 
 Before writing, silently choose the single clearest structure:
 
-1. Status Quo → Problem → Solution (default)
+1. Status Quo → Problem → Solution
 2. What → Why → How
 3. What → So What → What Now
 
