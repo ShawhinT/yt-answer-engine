@@ -1,4 +1,4 @@
-"""Retrieval evaluation pipeline for BM25 baseline."""
+"""Retrieval evaluation pipeline comparing BM25 and Chroma search."""
 
 import csv
 import json
@@ -8,10 +8,14 @@ from pathlib import Path
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from utils.search import search_with_scores
+from utils.search_bm25 import search_with_scores as bm25_search
+from utils.search_chroma import search_with_scores as chroma_search
+from utils.search_hybrid import search_with_scores as hybrid_search
 
 QUERIES_PATH = Path("query_gen/data/queries.csv")
 RESULTS_PATH = Path("retrieval_eval/data/eval_results.jsonl")
+
+METHODS = ["bm25", "chroma", "hybrid"]
 
 
 # ─────────────────────────────────────────────────────────────
@@ -67,8 +71,9 @@ def evaluate_split(split: str, k_values: list[int]) -> tuple[list[dict], dict]:
     queries = load_queries(split)
     print(f"Loaded {len(queries)} queries for split='{split}'")
 
-    total_rr = 0.0
-    recall_sums = {k: 0 for k in k_values}
+    # Track metrics per method
+    total_rr = {method: 0.0 for method in METHODS}
+    recall_sums = {method: {k: 0 for k in k_values} for method in METHODS}
     results = []
 
     for q in queries:
@@ -76,44 +81,60 @@ def evaluate_split(split: str, k_values: list[int]) -> tuple[list[dict], dict]:
         query_text = q["query"]
         gold_video_id = q["video_id"]
 
-        # Run BM25 search
-        search_results = search_with_scores(query_text, limit=max(k_values))
-        retrieved_ids = [r[0] for r in search_results]
-        scores = [r[1] for r in search_results]
+        # Run all search methods
+        bm25_results = bm25_search(query_text, limit=max(k_values))
+        chroma_results = chroma_search(query_text, limit=max(k_values))
+        hybrid_results = hybrid_search(query_text, limit=max(k_values))
 
-        # Compute metrics
-        rr = reciprocal_rank(gold_video_id, retrieved_ids)
-        gr = gold_rank(gold_video_id, retrieved_ids)
-        hits = {k: recall_at_k(gold_video_id, retrieved_ids, k) for k in k_values}
+        search_outputs = {
+            "bm25": bm25_results,
+            "chroma": chroma_results,
+            "hybrid": hybrid_results,
+        }
 
-        # Accumulate
-        total_rr += rr
-        for k in k_values:
-            recall_sums[k] += hits[k]
-
-        # Log result
+        # Build result dict
         result = {
             "query_id": query_id,
             "query": query_text,
             "gold_video_id": gold_video_id,
-            "retrieved_ids": retrieved_ids,
-            "scores": scores,
-            "gold_rank": gr,
-            "rr": rr,
-            **{f"hit@{k}": hits[k] for k in k_values},
             # Metadata for analysis
             "split": split,
             "query_type": q["query_type"],
             "difficulty": q["difficulty"],
         }
+
+        # Compute metrics for each method
+        for method in METHODS:
+            retrieved_ids = [r[0] for r in search_outputs[method]]
+            scores = [r[1] for r in search_outputs[method]]
+
+            rr = reciprocal_rank(gold_video_id, retrieved_ids)
+            gr = gold_rank(gold_video_id, retrieved_ids)
+            hits = {k: recall_at_k(gold_video_id, retrieved_ids, k) for k in k_values}
+
+            # Accumulate
+            total_rr[method] += rr
+            for k in k_values:
+                recall_sums[method][k] += hits[k]
+
+            # Add method-prefixed fields to result
+            result[f"{method}_retrieved_ids"] = retrieved_ids
+            result[f"{method}_scores"] = scores
+            result[f"{method}_gold_rank"] = gr
+            result[f"{method}_rr"] = rr
+            for k in k_values:
+                result[f"{method}_hit@{k}"] = hits[k]
+
         results.append(result)
 
     n = len(queries)
-    metrics = {
-        "n": n,
-        "mrr": total_rr / n if n > 0 else 0,
-        "recall": {k: recall_sums[k] / n if n > 0 else 0 for k in k_values},
-    }
+    metrics = {}
+    for method in METHODS:
+        metrics[method] = {
+            "n": n,
+            "mrr": total_rr[method] / n if n > 0 else 0,
+            "recall": {k: recall_sums[method][k] / n if n > 0 else 0 for k in k_values},
+        }
     return results, metrics
 
 
@@ -138,19 +159,32 @@ def evaluate():
             out.write(json.dumps(result) + "\n")
 
     # Print aggregate metrics
-    print(f"\n{'='*40}")
-    print("Results Summary")
-    print(f"{'='*40}")
+    print(f"\n{'='*72}")
+    print("Results Summary (BM25 vs Chroma vs Hybrid)")
+    print(f"{'='*72}")
+
     for split in splits:
         m = all_metrics[split]
-        print(f"\n{split.upper()} (n={m['n']})")
-        print(f"  MRR:       {m['mrr']:.4f}")
+        n = m["bm25"]["n"]
+        print(f"\n{split.upper()} (n={n})")
+        print(f"  {'Metric':<12} {'BM25':>10} {'Chroma':>10} {'Hybrid':>10}")
+        print(f"  {'-'*42}")
+
+        # MRR
+        bm25_mrr = m["bm25"]["mrr"]
+        chroma_mrr = m["chroma"]["mrr"]
+        hybrid_mrr = m["hybrid"]["mrr"]
+        print(f"  {'MRR':<12} {bm25_mrr:>10.4f} {chroma_mrr:>10.4f} {hybrid_mrr:>10.4f}")
+
+        # Recall@k
         for k in k_values:
-            print(f"  Recall@{k}: {m['recall'][k]:.4f}")
+            bm25_r = m["bm25"]["recall"][k]
+            chroma_r = m["chroma"]["recall"][k]
+            hybrid_r = m["hybrid"]["recall"][k]
+            print(f"  {f'Recall@{k}':<12} {bm25_r:>10.4f} {chroma_r:>10.4f} {hybrid_r:>10.4f}")
 
     print(f"\nPer-query results saved to: {RESULTS_PATH}")
 
 
 if __name__ == "__main__":
     evaluate()
-
