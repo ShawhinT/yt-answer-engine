@@ -104,3 +104,47 @@ def search_videos(query: str, limit: int = 5):
     conn.close()
 
     return results
+
+
+def get_all_video_ids() -> list[str]:
+    """Get all video IDs from the database."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT video_id FROM videos ORDER BY video_id")
+    video_ids = [row[0] for row in cursor.fetchall()]
+
+    conn.close()
+    return video_ids
+
+
+def get_video_by_id(video_id: str) -> dict[str, str] | None:
+    """Get video data by ID.
+
+    Args:
+        video_id: YouTube video ID
+
+    Returns:
+        Dictionary with keys: video_id, title, transcript
+        Returns None if video not found
+    """
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT video_id, title, transcript
+        FROM videos
+        WHERE video_id = ?
+    """, (video_id,))
+
+    row = cursor.fetchone()
+    conn.close()
+
+    if row is None:
+        return None
+
+    return {
+        "video_id": row[0],
+        "title": row[1],
+        "transcript": row[2]
+    }
