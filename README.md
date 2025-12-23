@@ -4,19 +4,10 @@ AI-powered question answering system that grounds responses in YouTube video tra
 
 This system combines multiple retrieval methods (BM25 keyword search, semantic search via ChromaDB, and hybrid fusion) to find relevant video content, then uses OpenAI GPT-4.1 to generate accurate answers with inline citations. It includes a complete evaluation pipeline for benchmarking retrieval quality and answer accuracy.
 
-## Features
-
-- **Hybrid Retrieval**: Combines BM25 keyword search and ChromaDB semantic search using Reciprocal Rank Fusion (RRF)
-- **LLM-Grounded Answers**: OpenAI GPT-4.1 generates answers strictly grounded in retrieved video transcripts
-- **Citation System**: Automatic inline citations linking answers back to source videos
-- **Evaluation Pipeline**: Synthetic query generation and comprehensive benchmarking for both retrieval and response quality
-- **Interactive Analysis**: Streamlit-based viewers for exploring results, tagging responses, and exporting error analysis
-- **Incremental Updates**: Support for both full channel ingestion and incremental updates
-
 ## Prerequisites
 
 - **Python**: >= 3.13
-- **Package Manager**: `uv` (recommended) or `pip`
+- **Package Manager**: `uv`
 - **API Keys**:
   - YouTube Data API v3 key
   - OpenAI API key
@@ -45,16 +36,10 @@ cd yt-answer-engine
 
 ### 2. Install Dependencies
 
-Using `uv` (recommended):
+Using `uv`:
 
 ```bash
 uv sync
-```
-
-Or using `pip`:
-
-```bash
-pip install -e .
 ```
 
 ### 3. Configure Environment Variables
@@ -78,63 +63,6 @@ PROXY_URL=your_proxy_url
 **Where to get API keys:**
 - YouTube API: [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
 - OpenAI API: [OpenAI Platform](https://platform.openai.com/api-keys)
-
-### 4. Activate Virtual Environment
-
-```bash
-source .venv/bin/activate
-```
-
-### 5. Initialize Database
-
-The database will be created automatically on first ingestion, but you can initialize it manually:
-
-```bash
-python -c "from data_ingestion.database import init_db; init_db()"
-```
-
-## System Overview
-
-### Architecture
-
-The system uses a two-stage architecture:
-
-1. **Retrieval Stage**: Multi-method search across video transcripts
-   - **BM25** (SQLite FTS5): Fast keyword-based search
-   - **Semantic** (ChromaDB): Vector similarity search with embeddings
-   - **Hybrid** (RRF): Reciprocal Rank Fusion combining both methods
-
-2. **Generation Stage**: LLM-based answer synthesis
-   - Retrieves top-k videos based on query
-   - Formats video titles and transcripts as context
-   - Uses OpenAI GPT-4.1 with structured output for answer generation
-   - Enforces citation requirements through system prompts
-
-### Data Storage
-
-- **SQLite** (`data/videos.db`):
-  - `videos` table: Primary storage for video metadata and transcripts
-  - `videos_fts` table: FTS5 virtual table for BM25 search
-  - Automatic triggers keep FTS5 synchronized with main table
-
-- **ChromaDB** (`data/chroma/`):
-  - Vector embeddings for semantic search
-  - Uses OpenAI text-embedding-ada-002 (default)
-  - Cosine distance metric
-
-### Evaluation Framework
-
-1. **Query Generation**: Synthetic queries generated from video content and YouTube comments using GPT-4.1
-   - 9 queries per video (3 easy, 3 medium, 3 hard)
-   - Train/validation/test splits for proper evaluation
-
-2. **Retrieval Evaluation**: Benchmark all search methods
-   - Metrics: Mean Reciprocal Rank (MRR), Recall@K
-   - Compare BM25, ChromaDB, and Hybrid approaches
-
-3. **Response Evaluation**: Assess answer quality
-   - Manual tagging for response quality
-   - Error analysis and export capabilities
 
 ## Core Workflows
 
@@ -216,24 +144,6 @@ Features:
 - Tag responses for quality assessment
 - Mark retrieval failures
 - Export error analysis to CSV
-
-## Development Tools
-
-### Jupyter Notebook
-
-```bash
-jupyter lab
-```
-
-Main development notebook: `sandbox.ipynb`
-
-### Query Browser
-
-```bash
-streamlit run evals/retrieval/query_gen/viewer.py
-```
-
-Browse all generated queries with metadata, difficulty levels, and splits.
 
 ## Project Structure
 
