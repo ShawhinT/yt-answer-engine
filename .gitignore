@@ -208,3 +208,6 @@ __marimo__/
 
 # Mac
 .DS_Store
+# Data files
+data/
+*.bak
