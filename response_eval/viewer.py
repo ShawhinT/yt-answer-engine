@@ -56,10 +56,10 @@ def load_all_query_ids() -> list[tuple[str, str]]:
 def load_query_result(query_id: str) -> dict | None:
     """
     Load a single query result by ID.
-    
+
     Args:
         query_id: The query ID to load.
-    
+
     Returns:
         Query result dictionary or None if not found.
     """
@@ -74,9 +74,49 @@ def load_query_result(query_id: str) -> dict | None:
                     # Ensure optional fields exist
                     record.setdefault("notes", "")
                     record.setdefault("tags", [])
+
+                    # Load and merge evaluation metadata
+                    eval_metadata = load_eval_metadata(query_id)
+                    if eval_metadata:
+                        record.update(eval_metadata)
+
                     return record
             except (json.JSONDecodeError, KeyError):
                 continue
+    return None
+
+
+def load_eval_metadata(query_id: str) -> dict | None:
+    """
+    Load evaluation metadata for a query from eval_results.jsonl.
+
+    Args:
+        query_id: The query ID to load metadata for.
+
+    Returns:
+        Dictionary with query_type, difficulty, and split, or None if not found.
+    """
+    eval_path = Path(__file__).parent.parent / "retrieval_eval" / "data" / "eval_results.jsonl"
+
+    if not eval_path.exists():
+        return None
+
+    with open(eval_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                record = json.loads(line)
+                if record["query_id"] == query_id:
+                    return {
+                        "query_type": record.get("query_type"),
+                        "difficulty": record.get("difficulty"),
+                        "split": record.get("split")
+                    }
+            except (json.JSONDecodeError, KeyError):
+                continue
+
     return None
 
 
@@ -184,6 +224,64 @@ def count_annotated_queries() -> tuple[int, int]:
                 continue
     
     return total, annotated
+
+
+def get_unique_videos() -> list[str]:
+    """
+    Get ordered list of unique gold_video_ids from all queries.
+
+    Returns:
+        List of unique video IDs in order of first appearance.
+    """
+    videos = []
+    seen = set()
+
+    if not JSONL_PATH.exists():
+        return videos
+
+    with open(JSONL_PATH, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                record = json.loads(line)
+                video_id = record.get("gold_video_id")
+                if video_id and video_id not in seen:
+                    videos.append(video_id)
+                    seen.add(video_id)
+            except (json.JSONDecodeError, KeyError):
+                continue
+
+    return videos
+
+
+def get_first_query_for_video(gold_video_id: str) -> str | None:
+    """
+    Get the first query_id for a given gold_video_id.
+
+    Args:
+        gold_video_id: The video ID to search for.
+
+    Returns:
+        The first query ID for this video, or None if not found.
+    """
+    if not JSONL_PATH.exists():
+        return None
+
+    with open(JSONL_PATH, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                record = json.loads(line)
+                if record.get("gold_video_id") == gold_video_id:
+                    return record["query_id"]
+            except (json.JSONDecodeError, KeyError):
+                continue
+
+    return None
 
 
 def export_to_csv() -> dict:
@@ -352,9 +450,42 @@ with st.sidebar:
             if st.button("⏭", help="Last", key="nav_last"):
                 st.session_state.current_query_id = query_ids[-1]
                 st.rerun()
+
+        # Video navigation
+        st.divider()
+
+        current_result = load_query_result(st.session_state.current_query_id)
+        if current_result:
+            gold_video_id = current_result.get("gold_video_id")
+            if gold_video_id:
+                unique_videos = get_unique_videos()
+                if len(unique_videos) > 1 and gold_video_id in unique_videos:
+                    current_video_idx = unique_videos.index(gold_video_id)
+
+                    st.caption(f"Video {current_video_idx + 1}/{len(unique_videos)}")
+
+                    vid_col1, vid_col2 = st.columns(2)
+
+                    with vid_col1:
+                        if st.button("◀ Prev Video", use_container_width=True, key="nav_prev_video"):
+                            new_video_idx = (current_video_idx - 1) % len(unique_videos)
+                            new_video_id = unique_videos[new_video_idx]
+                            first_query = get_first_query_for_video(new_video_id)
+                            if first_query:
+                                st.session_state.current_query_id = first_query
+                                st.rerun()
+
+                    with vid_col2:
+                        if st.button("Next Video ▶", use_container_width=True, key="nav_next_video"):
+                            new_video_idx = (current_video_idx + 1) % len(unique_videos)
+                            new_video_id = unique_videos[new_video_idx]
+                            first_query = get_first_query_for_video(new_video_id)
+                            if first_query:
+                                st.session_state.current_query_id = first_query
+                                st.rerun()
     else:
         st.warning("No queries found. Run response generation first.")
-    
+
     st.divider()
     
     # Export section
@@ -405,6 +536,15 @@ else:
         with row1_query:
             st.subheader("Query")
             st.markdown(f"**{result['query']}**")
+
+            # Display query metadata
+            if result.get("query_type") or result.get("difficulty"):
+                meta_parts = []
+                if result.get("query_type"):
+                    meta_parts.append(f"`{result['query_type']}`")
+                if result.get("difficulty"):
+                    meta_parts.append(f"`{result['difficulty']}`")
+                st.caption(" • ".join(meta_parts))
         
         with row1_response:
             st.subheader("Response")
