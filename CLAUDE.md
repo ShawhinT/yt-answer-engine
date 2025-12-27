@@ -74,10 +74,10 @@ python -m data_ingestion.sync_chroma
 python -m evals.retrieval.query_gen.run
 
 # Run retrieval eval on validation/test splits
-python -m evals.retrieval.evaluate
+python -m evals.evaluate
 
 # View results with interactive Streamlit viewer
-streamlit run evals/retrieval/analysis.py
+streamlit run evals/analysis.py
 ```
 
 **Response Evaluation** (answer quality):
@@ -138,7 +138,7 @@ jupyter lab
 Main notebook: `sandbox.ipynb`
 
 ### Streamlit Viewers
-- `evals/retrieval/analysis.py` - Compare retrieval methods, filter by difficulty/query type
+- `evals/analysis.py` - Compare retrieval methods, filter by difficulty/query type
 - `evals/response/viewer.py` - Review generated answers and citations, tag responses, export error analysis
 - `evals/retrieval/query_gen/viewer.py` - Browse generated queries
 
@@ -155,6 +155,10 @@ Main notebook: `sandbox.ipynb`
   - `evals/response/data/response_results.jsonl` - Generated answers with citations
   - `evals/response/data/error_analysis-*.csv` - Error analysis exports with timestamps
   - `evals/response/data/tags.json` - User-defined tags for categorizing response quality
+
+- **Test Files**:
+  - `evals/retrieval/tests.py` - Unit tests for retrieval metrics
+  - `evals/response/tests.py` - Placeholder for response evaluation tests
 
 ## Important Notes
 

@@ -106,7 +106,7 @@ Output: `evals/retrieval/query_gen/data/queries.csv`
 **Run retrieval benchmarks**:
 
 ```bash
-python -m evals.retrieval.evaluate
+python -m evals.evaluate
 ```
 
 Output: `evals/retrieval/data/eval_results.jsonl`
@@ -114,7 +114,7 @@ Output: `evals/retrieval/data/eval_results.jsonl`
 **View results interactively**:
 
 ```bash
-streamlit run evals/retrieval/analysis.py
+streamlit run evals/analysis.py
 ```
 
 Features:
