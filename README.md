@@ -98,10 +98,10 @@ python -m data_ingestion.sync_chroma
 **Generate synthetic queries**:
 
 ```bash
-python -m evals.retrieval.query_gen.run
+python -m utils.query_gen.run
 ```
 
-Output: `evals/retrieval/query_gen/data/queries.csv`
+Output: `data/queries/qset_v01/queries.csv`
 
 **Run retrieval benchmarks**:
 
@@ -155,21 +155,21 @@ yt-answer-engine/
 │   ├── sync_chroma.py    # Vector DB synchronization
 │   └── database.py       # SQLite operations
 ├── evals/                # Evaluation framework
-│   ├── retrieval/        # Search method benchmarking
-│   │   ├── evaluate.py   # Run retrieval benchmarks
-│   │   ├── analysis.py   # Streamlit retrieval viewer
-│   │   └── query_gen/    # Synthetic query generation
-│   │       ├── run.py    # Query generation workflow
-│   │       ├── functions.py  # Query generation logic
-│   │       └── viewer.py # Query browser
+│   ├── evaluate.py       # Run retrieval benchmarks
+│   ├── analysis.py       # Streamlit retrieval viewer
+│   ├── retrieval/        # Retrieval evaluation data
 │   └── response/         # Answer quality evaluation
 │       ├── generate.py   # Answer generation
 │       └── viewer.py     # Streamlit response viewer
-├── utils/                # Search implementations
+├── utils/                # Search implementations & tools
 │   ├── answer.py         # Answer generation API
 │   ├── search_bm25.py    # BM25 keyword search
 │   ├── search_chroma.py  # Semantic search
-│   └── search_hybrid.py  # RRF hybrid search
+│   ├── search_hybrid.py  # RRF hybrid search
+│   └── query_gen/        # Synthetic query generation
+│       ├── run.py        # Query generation workflow
+│       ├── functions.py  # Query generation logic
+│       └── viewer.py     # Query browser
 ├── prompts/              # LLM system prompts
 │   ├── answer_system.md  # Grounding & citation requirements
 │   └── answer_user.md    # User prompt template
@@ -201,7 +201,7 @@ To ingest a different YouTube channel, edit the `CHANNEL_ID` constant in `data_i
 
 The system uses `gpt-4.1-2025-04-14` for both answer generation and query synthesis. To change the model, modify:
 - Answer generation: `utils/answer.py` and `response_eval/generate.py`
-- Query generation: `retrieval_eval/query_gen/functions.py`
+- Query generation: `utils/query_gen/functions.py`
 
 ## Additional Information
 
@@ -222,7 +222,7 @@ This project is licensed under the Apache 2.0 License. See [`LICENSE`](./LICENSE
 ### Data Files
 
 Evaluation data is stored in JSONL and CSV formats:
-- `evals/retrieval/query_gen/data/queries.csv` - Generated queries with splits
+- `data/queries/qset_v01/queries.csv` - Generated queries with splits
 - `evals/retrieval/data/eval_results.jsonl` - Retrieval benchmark results
 - `evals/response/data/response_results.jsonl` - Generated answers with citations
 - `evals/response/data/error_analysis-*.csv` - Tagged error analysis exports

@@ -12,14 +12,14 @@ import streamlit as st
 import pandas as pd
 
 # Import enums from functions.py
-from functions import QueryType, DifficultyLevel
+from utils.query_gen.functions import QueryType, DifficultyLevel
 
 # ============================================================================
 # Configuration
 # ============================================================================
 
-JSONL_PATH = Path(__file__).parent / "data" / "raw_queries.jsonl"
-CSV_OUTPUT_PATH = Path(__file__).parent / "data" / "queries.csv"
+JSONL_PATH = Path(__file__).parent.parent.parent / "data" / "queries" / "qset_v01" / "raw_queries.jsonl"
+CSV_OUTPUT_PATH = Path(__file__).parent.parent.parent / "data" / "queries" / "qset_v01" / "queries.csv"
 
 QUERY_TYPE_OPTIONS = [qt.value for qt in QueryType]
 DIFFICULTY_OPTIONS = [dl.value for dl in DifficultyLevel]
@@ -233,11 +233,11 @@ def export_golden_queries_csv(jsonl_path: Path, output_path: Path) -> dict:
     if not queries_by_video:
         return {
             "golden_count": 0,
-            "val_videos": 0,
-            "val_queries": 0,
+            "dev_videos": 0,
+            "dev_queries": 0,
             "test_videos": 0,
             "test_queries": 0,
-            "val_video_ids": [],
+            "dev_video_ids": [],
             "test_video_ids": []
         }
     
@@ -247,13 +247,13 @@ def export_golden_queries_csv(jsonl_path: Path, output_path: Path) -> dict:
     random.shuffle(video_ids)
     
     split_point = int(len(video_ids) * 0.8)
-    val_video_ids = video_ids[:split_point]
+    dev_video_ids = video_ids[:split_point]
     test_video_ids = video_ids[split_point:]
     
     # Assign splits and generate query IDs
     rows = []
     for video_id in video_ids:
-        split = "validation" if video_id in val_video_ids else "test"
+        split = "dev" if video_id in dev_video_ids else "test"
         for idx, query in enumerate(queries_by_video[video_id]):
             query_id = f"{video_id}_{idx}"
             row = {
@@ -283,16 +283,16 @@ def export_golden_queries_csv(jsonl_path: Path, output_path: Path) -> dict:
         writer.writerows(rows)
     
     # Calculate stats
-    val_queries = sum(len(queries_by_video[vid]) for vid in val_video_ids)
+    dev_queries = sum(len(queries_by_video[vid]) for vid in dev_video_ids)
     test_queries = sum(len(queries_by_video[vid]) for vid in test_video_ids)
     
     return {
         "golden_count": len(rows),
-        "val_videos": len(val_video_ids),
-        "val_queries": val_queries,
+        "dev_videos": len(dev_video_ids),
+        "dev_queries": dev_queries,
         "test_videos": len(test_video_ids),
         "test_queries": test_queries,
-        "val_video_ids": val_video_ids,
+        "dev_video_ids": dev_video_ids,
         "test_video_ids": test_video_ids
     }
 
@@ -419,12 +419,12 @@ with st.sidebar:
             st.success(f"""
             Export complete!
             - Total: {stats['golden_count']} queries
-            - Validation: {stats['val_videos']} videos, {stats['val_queries']} queries
+            - Dev: {stats['dev_videos']} videos, {stats['dev_queries']} queries
             - Test: {stats['test_videos']} videos, {stats['test_queries']} queries
             """)
             
             with st.expander("View split details"):
-                st.write("**Validation videos:**", stats["val_video_ids"])
+                st.write("**Dev videos:**", stats["dev_video_ids"])
                 st.write("**Test videos:**", stats["test_video_ids"])
     
     # Show last export info

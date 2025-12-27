@@ -12,7 +12,7 @@ from utils.search_bm25 import search_with_scores as bm25_search
 from utils.search_chroma import search_with_scores as chroma_search
 from utils.search_hybrid import search_with_scores as hybrid_search
 
-QUERIES_PATH = Path("evals/retrieval/query_gen/data/queries.csv")
+QUERIES_PATH = Path("data/queries/qset_v01/queries.csv")
 RESULTS_PATH = Path("evals/retrieval/data/eval_results.jsonl")
 
 METHODS = ["bm25", "chroma", "hybrid"]
@@ -139,9 +139,9 @@ def evaluate_split(split: str, k_values: list[int]) -> tuple[list[dict], dict]:
 
 
 def evaluate():
-    """Run evaluation on validation and test splits."""
+    """Run evaluation on dev and test splits."""
     k_values = [1, 3]
-    splits = ["validation", "test"]
+    splits = ["dev", "test"]
 
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
 

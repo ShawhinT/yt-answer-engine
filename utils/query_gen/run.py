@@ -3,16 +3,16 @@
 import sys
 from pathlib import Path
 
-sys.path.append(str(Path(__file__).parent.parent.parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from data_ingestion.database import get_all_video_ids, get_video_by_id
-from evals.retrieval.query_gen.functions import (
+from utils.query_gen.functions import (
     get_all_comments,
     generate_queries,
     save_queries_to_jsonl
 )
 
-OUTPUT_PATH = Path(__file__).parent / "data" / "raw_queries.jsonl"
+OUTPUT_PATH = Path(__file__).parent.parent.parent / "data" / "queries" / "qset_v01" / "raw_queries.jsonl"
 
 
 def main():
