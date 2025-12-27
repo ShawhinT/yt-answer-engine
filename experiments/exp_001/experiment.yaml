@@ -1,0 +1,25 @@
+exp_id: exp_001
+name: Baseline Hybrid RAG
+description: |
+  Establish baseline performance for hybrid retrieval (BM25 + semantic) 
+  with structured answer generation. Reference point for future experiments.
+pipeline: |
+  1. Retrieval (top 10 per method, merged to top 3 via RRF)
+     - BM25: SQLite FTS5 on videos_fts table
+       - k1=1.2, b=0.75 (SQLite defaults, not tunable)
+       - Column weights: all 1.0 (default)
+       - Query preprocessing: tokens wrapped in double quotes
+     - Chroma: all-MiniLM-L6-v2 (default)
+       - hnsw:space=cosine (explicit)
+       - hnsw:construction_ef=100, hnsw:search_ef=10, hnsw:M=16 (defaults)
+       - Document: title + transcript concatenated
+     - Hybrid: Reciprocal Rank Fusion
+       - k=60, score = sum(1/(k+rank))
+  2. Context
+     - Top 3 videos from hybrid ranking
+     - Full document per video (title + transcript), no chunking
+  3. Answer
+     - Model: gpt-4.1-2025-04-14
+     - Pydantic structured output (answer + citations array)
+     - System prompt enforces strict grounding, inline citations, no hallucination
+

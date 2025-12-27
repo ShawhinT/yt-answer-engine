@@ -4,8 +4,7 @@ exp_001 Main Experiment Logic
 Orchestrates the experiment pipeline:
 1. Generates outputs (retrieval + responses)
 2. Runs evaluation
-3. Updates EXPERIMENT.md with results
-4. Updates registry.md with results
+3. Updates registry.md with results
 """
 
 import json
@@ -232,7 +231,7 @@ def _run_split(split: str, run_id: str, max_queries: int | None = None):
             "user": "prompts/answer_user.md",
         },
         "models": {
-            "embedding": "text-embedding-ada-002",
+            "embedding": "all-MiniLM-L6-v2",
             "answer": "gpt-4.1-2025-04-14",
         },
         "config": {
@@ -293,47 +292,12 @@ def _run_split(split: str, run_id: str, max_queries: int | None = None):
     print(f"  Avg answer length:    {response_metrics['avg_answer_length']:.1f}")
     print(f"  Avg citation count:   {response_metrics['avg_citation_count']:.2f}")
 
-    # Update EXPERIMENT.md
-    update_experiment_md(run_id, metrics, git_info)
-
     # Update registry.md
     update_registry_md(run_id, metrics)
 
     print(f"\n{'=' * 72}")
     print(f"Run complete! Results saved to: {run_dir}")
     print(f"{'=' * 72}\n")
-
-
-def update_experiment_md(run_id: str, metrics: dict, git_info: dict):
-    """Append run results to EXPERIMENT.md."""
-    experiment_md = EXP_DIR / "EXPERIMENT.md"
-
-    # Format metrics for table
-    ret = metrics["retrieval"]["hybrid"]
-    resp = metrics["response"]
-
-    run_entry = f"""
-### {run_id} ({metrics['split']})
-
-**Date**: {datetime.now().strftime('%Y-%m-%d')}
-**Git SHA**: {git_info['sha']}{'*' if git_info['dirty'] else ''}
-**Queries**: {metrics['query_count']}
-
-**Retrieval (Hybrid)**:
-- Recall@1: {ret['recall@1']:.4f}
-- Recall@3: {ret['recall@3']:.4f}
-- MRR: {ret['mrr']:.4f}
-
-**Response**:
-- Gold cited: {resp['gold_cited_rate']:.4f}
-- Citation precision: {resp['citation_precision']:.4f}
-- Avg answer length: {resp['avg_answer_length']:.0f} chars
-"""
-
-    with open(experiment_md, "a") as f:
-        f.write(run_entry)
-
-    print(f"\nUpdated {experiment_md}")
 
 
 def update_registry_md(run_id: str, metrics: dict):

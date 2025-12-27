@@ -16,7 +16,7 @@ To create a new experiment:
    cp -r experiments/exp_001 experiments/exp_XXX
    ```
 
-2. Update `EXPERIMENT.md` with new approach
+2. Create `experiment.yaml` with exp_id, name, description, pipeline
 
 3. Modify `src/main.py` to implement new method (must export `run_experiment(run_id, max_queries)`)
 
