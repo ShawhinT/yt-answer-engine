@@ -9,9 +9,24 @@ from openai import OpenAI
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from data_ingestion.database import get_video_by_id
-from utils.context import format_context
 from utils.data import load_prompt
 from utils.models import AnswerResponse
+
+
+def format_context(videos: list[dict[str, str]]) -> str:
+    """Format video data as context string for the prompt.
+
+    Args:
+        videos: List of video dicts with 'title', 'video_id', and 'transcript' keys
+
+    Returns:
+        Formatted context string with videos separated by horizontal rules
+    """
+    parts = []
+    for video in videos:
+        part = f"### {video['title']} (ID: {video['video_id']})\n\n{video['transcript']}"
+        parts.append(part)
+    return "\n\n---\n\n".join(parts)
 
 
 def generate_answer(
