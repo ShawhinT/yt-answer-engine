@@ -4,10 +4,12 @@ import sys
 from pathlib import Path
 
 # Add project root to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
 
 from data_ingestion.database import get_all_video_ids, get_video_by_id
-from utils.search_chroma import add_video, get_video_count
+
+# Import local search_chroma (same directory)
+import search_chroma
 
 
 def sync():
@@ -22,7 +24,7 @@ def sync():
             print(f"[{i}/{len(video_ids)}] SKIP {vid}: Not found")
             continue
 
-        add_video(video["video_id"], video["title"], video["transcript"])
+        search_chroma.add_video(video["video_id"], video["title"], video["transcript"])
 
         # Truncate title for display
         title = video["title"]
@@ -31,7 +33,7 @@ def sync():
 
     print()
     print("=" * 50)
-    print(f"Sync complete! Total in ChromaDB: {get_video_count()}")
+    print(f"Sync complete! Total in ChromaDB: {search_chroma.get_video_count()}")
     print("=" * 50)
 
 

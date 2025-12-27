@@ -1,6 +1,7 @@
 """Hybrid search combining BM25 and semantic search via RRF."""
 
-from utils import search_bm25, search_chroma
+import search_bm25
+import search_chroma
 
 
 def search_with_scores(query: str, limit: int = 10, k: int = 60) -> list[tuple[str, float]]:

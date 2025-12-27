@@ -1,0 +1,30 @@
+{
+  "exp_id": "exp_001",
+  "run_id": "r001",
+  "timestamp": "2025-12-27T05:13:53.690242Z",
+  "git_sha": "0d7a161",
+  "git_dirty": true,
+  "query_set_id": "qset_v01",
+  "split": "dev",
+  "query_count": 3,
+  "videos_db_path": "../../data/youtube/videos.db",
+  "chroma_path": "../../data/youtube/chroma",
+  "prompt_files": {
+    "system": "prompts/answer_system.md",
+    "user": "prompts/answer_user.md"
+  },
+  "models": {
+    "embedding": "text-embedding-ada-002",
+    "answer": "gpt-4.1-2025-04-14"
+  },
+  "config": {
+    "retrieval_methods": [
+      "bm25",
+      "chroma",
+      "hybrid"
+    ],
+    "response_method": "hybrid",
+    "response_limit": 3,
+    "rrf_k": 60
+  }
+}

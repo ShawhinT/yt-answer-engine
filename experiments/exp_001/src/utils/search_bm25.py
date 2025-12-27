@@ -3,7 +3,7 @@
 import sqlite3
 from pathlib import Path
 
-DB_PATH = Path("data/youtube/videos.db")
+DB_PATH = Path(__file__).parent.parent.parent.parent.parent / "data/youtube/videos.db"
 
 
 def escape_fts5_query(query: str) -> str:

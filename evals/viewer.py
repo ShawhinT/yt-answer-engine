@@ -18,16 +18,49 @@ from data_ingestion.database import get_video_by_id
 # Configuration
 # ============================================================================
 
-JSONL_PATH = Path(__file__).parent / "response" / "data" / "response_results.jsonl"
-TAGS_PATH = Path(__file__).parent / "response" / "data" / "tags.json"
-CSV_OUTPUT_DIR = Path(__file__).parent / "response" / "data"
+PROJECT_ROOT = Path(__file__).parent.parent
+EXPERIMENTS_DIR = PROJECT_ROOT / "experiments"
+TAGS_PATH = Path(__file__).parent / "tags.json"
+
+
+# ============================================================================
+# Experiment/Run Discovery
+# ============================================================================
+
+def get_experiment_ids() -> list[str]:
+    """Discover all experiment directories (exp_XXX pattern)."""
+    exp_dirs = sorted(EXPERIMENTS_DIR.glob("exp_*"))
+    return [d.name for d in exp_dirs if d.is_dir()]
+
+
+def get_run_ids(exp_id: str) -> list[str]:
+    """Get all run IDs for an experiment."""
+    runs_dir = EXPERIMENTS_DIR / exp_id / "runs"
+    if not runs_dir.exists():
+        return []
+    return sorted([d.name for d in runs_dir.glob("r*") if d.is_dir()])
+
+
+def get_responses_path(exp_id: str, run_id: str) -> Path:
+    """Get path to responses.jsonl for a specific experiment run."""
+    return EXPERIMENTS_DIR / exp_id / "runs" / run_id / "responses.jsonl"
+
+
+def get_retrieval_path(exp_id: str, run_id: str) -> Path:
+    """Get path to retrieval.jsonl for a specific experiment run."""
+    return EXPERIMENTS_DIR / exp_id / "runs" / run_id / "retrieval.jsonl"
+
+
+def get_csv_output_dir(exp_id: str, run_id: str) -> Path:
+    """Get CSV output directory for a specific experiment run."""
+    return EXPERIMENTS_DIR / exp_id / "runs" / run_id
 
 
 # ============================================================================
 # Core I/O Functions
 # ============================================================================
 
-def load_all_query_ids() -> list[tuple[str, str]]:
+def load_all_query_ids(exp_id: str, run_id: str) -> list[tuple[str, str]]:
     """
     Load all query IDs with their query text for navigation.
     
@@ -35,11 +68,12 @@ def load_all_query_ids() -> list[tuple[str, str]]:
         List of (query_id, query_text) tuples.
     """
     queries = []
+    jsonl_path = get_responses_path(exp_id, run_id)
     
-    if not JSONL_PATH.exists():
+    if not jsonl_path.exists():
         return queries
     
-    with open(JSONL_PATH, 'r', encoding='utf-8') as f:
+    with open(jsonl_path, 'r', encoding='utf-8') as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -53,17 +87,24 @@ def load_all_query_ids() -> list[tuple[str, str]]:
     return queries
 
 
-def load_query_result(query_id: str) -> dict | None:
+def load_query_result(exp_id: str, run_id: str, query_id: str) -> dict | None:
     """
     Load a single query result by ID.
 
     Args:
+        exp_id: Experiment ID (e.g., "exp_001")
+        run_id: Run ID (e.g., "r001")
         query_id: The query ID to load.
 
     Returns:
         Query result dictionary or None if not found.
     """
-    with open(JSONL_PATH, 'r', encoding='utf-8') as f:
+    jsonl_path = get_responses_path(exp_id, run_id)
+    
+    if not jsonl_path.exists():
+        return None
+    
+    with open(jsonl_path, 'r', encoding='utf-8') as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -76,7 +117,7 @@ def load_query_result(query_id: str) -> dict | None:
                     record.setdefault("tags", [])
 
                     # Load and merge evaluation metadata
-                    eval_metadata = load_eval_metadata(query_id)
+                    eval_metadata = load_eval_metadata(exp_id, run_id, query_id)
                     if eval_metadata:
                         record.update(eval_metadata)
 
@@ -94,18 +135,19 @@ def load_query_result(query_id: str) -> dict | None:
     return None
 
 
-def load_eval_metadata(query_id: str) -> dict | None:
+def load_eval_metadata(exp_id: str, run_id: str, query_id: str) -> dict | None:
     """
-    Load evaluation metadata for a query from eval_results.jsonl.
+    Load evaluation metadata for a query from retrieval.jsonl.
 
     Args:
+        exp_id: Experiment ID
+        run_id: Run ID
         query_id: The query ID to load metadata for.
 
     Returns:
         Dictionary with query metadata and retrieval results, or None if not found.
-        Includes: query_type, difficulty, split, and retrieval results for BM25, Chroma, and Hybrid.
     """
-    eval_path = Path(__file__).parent / "retrieval" / "data" / "eval_results.jsonl"
+    eval_path = get_retrieval_path(exp_id, run_id)
 
     if not eval_path.exists():
         return None
@@ -140,12 +182,14 @@ def load_eval_metadata(query_id: str) -> dict | None:
     return None
 
 
-def update_query_data(query_id: str, notes: str, tags: list[str]) -> bool:
+def update_query_data(exp_id: str, run_id: str, query_id: str, notes: str, tags: list[str]) -> bool:
     """
     Update notes and tags for a query in the JSONL file.
     Uses atomic write (temp file + rename) for safety.
     
     Args:
+        exp_id: Experiment ID
+        run_id: Run ID
         query_id: Query ID to update.
         notes: User notes to save.
         tags: List of active tag names.
@@ -153,14 +197,19 @@ def update_query_data(query_id: str, notes: str, tags: list[str]) -> bool:
     Returns:
         True if update was successful, False otherwise.
     """
+    jsonl_path = get_responses_path(exp_id, run_id)
+    
+    if not jsonl_path.exists():
+        return False
+    
     # Create backup before modifying
-    backup_path = JSONL_PATH.with_suffix('.jsonl.bak')
-    shutil.copy2(JSONL_PATH, backup_path)
+    backup_path = jsonl_path.with_suffix('.jsonl.bak')
+    shutil.copy2(jsonl_path, backup_path)
     
     lines = []
     updated = False
     
-    with open(JSONL_PATH, 'r', encoding='utf-8') as f:
+    with open(jsonl_path, 'r', encoding='utf-8') as f:
         for line in f:
             stripped = line.strip()
             if not stripped:
@@ -185,7 +234,7 @@ def update_query_data(query_id: str, notes: str, tags: list[str]) -> bool:
     # Atomic write: write to temp file, then rename
     with tempfile.NamedTemporaryFile(
         mode='w',
-        dir=JSONL_PATH.parent,
+        dir=jsonl_path.parent,
         delete=False,
         suffix='.tmp',
         encoding='utf-8'
@@ -193,7 +242,7 @@ def update_query_data(query_id: str, notes: str, tags: list[str]) -> bool:
         tmp.writelines(lines)
         tmp_path = Path(tmp.name)
     
-    tmp_path.replace(JSONL_PATH)
+    tmp_path.replace(jsonl_path)
     return True
 
 
@@ -216,7 +265,7 @@ def save_tags(tags: list[str]) -> None:
         json.dump(tags, f, indent=2)
 
 
-def count_annotated_queries() -> tuple[int, int]:
+def count_annotated_queries(exp_id: str, run_id: str) -> tuple[int, int]:
     """
     Count total queries and queries with annotations.
     
@@ -225,11 +274,12 @@ def count_annotated_queries() -> tuple[int, int]:
     """
     total = 0
     annotated = 0
+    jsonl_path = get_responses_path(exp_id, run_id)
     
-    if not JSONL_PATH.exists():
+    if not jsonl_path.exists():
         return 0, 0
     
-    with open(JSONL_PATH, 'r', encoding='utf-8') as f:
+    with open(jsonl_path, 'r', encoding='utf-8') as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -246,7 +296,7 @@ def count_annotated_queries() -> tuple[int, int]:
     return total, annotated
 
 
-def get_unique_videos() -> list[str]:
+def get_unique_videos(exp_id: str, run_id: str) -> list[str]:
     """
     Get ordered list of unique gold_video_ids from all queries.
 
@@ -255,11 +305,12 @@ def get_unique_videos() -> list[str]:
     """
     videos = []
     seen = set()
+    jsonl_path = get_responses_path(exp_id, run_id)
 
-    if not JSONL_PATH.exists():
+    if not jsonl_path.exists():
         return videos
 
-    with open(JSONL_PATH, 'r', encoding='utf-8') as f:
+    with open(jsonl_path, 'r', encoding='utf-8') as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -276,20 +327,24 @@ def get_unique_videos() -> list[str]:
     return videos
 
 
-def get_first_query_for_video(gold_video_id: str) -> str | None:
+def get_first_query_for_video(exp_id: str, run_id: str, gold_video_id: str) -> str | None:
     """
     Get the first query_id for a given gold_video_id.
 
     Args:
+        exp_id: Experiment ID
+        run_id: Run ID
         gold_video_id: The video ID to search for.
 
     Returns:
         The first query ID for this video, or None if not found.
     """
-    if not JSONL_PATH.exists():
+    jsonl_path = get_responses_path(exp_id, run_id)
+    
+    if not jsonl_path.exists():
         return None
 
-    with open(JSONL_PATH, 'r', encoding='utf-8') as f:
+    with open(jsonl_path, 'r', encoding='utf-8') as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -304,7 +359,7 @@ def get_first_query_for_video(gold_video_id: str) -> str | None:
     return None
 
 
-def export_to_csv() -> dict:
+def export_to_csv(exp_id: str, run_id: str) -> dict:
     """
     Export all annotated queries to CSV with timestamp in filename.
 
@@ -313,12 +368,15 @@ def export_to_csv() -> dict:
     """
     from datetime import datetime
 
+    jsonl_path = get_responses_path(exp_id, run_id)
+    csv_output_dir = get_csv_output_dir(exp_id, run_id)
+
     # Load all tags for column headers
     all_tags = load_tags()
 
     # Load all query results
     results = []
-    with open(JSONL_PATH, 'r', encoding='utf-8') as f:
+    with open(jsonl_path, 'r', encoding='utf-8') as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -360,10 +418,10 @@ def export_to_csv() -> dict:
     # Generate timestamped filename
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     csv_filename = f"error_analysis-{timestamp}.csv"
-    csv_path = CSV_OUTPUT_DIR / csv_filename
+    csv_path = csv_output_dir / csv_filename
 
     # Write CSV
-    CSV_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    csv_output_dir.mkdir(parents=True, exist_ok=True)
 
     fieldnames = ["query_id", "query", "response", "notes", "tags"]
     fieldnames.extend([f"tag_{tag}" for tag in all_tags])
@@ -393,8 +451,10 @@ st.set_page_config(
 # Initialize session state
 if "initialized" not in st.session_state:
     st.session_state.initialized = True
+    st.session_state.current_exp_id = None
+    st.session_state.current_run_id = None
     st.session_state.current_query_id = None
-    st.session_state.query_list = load_all_query_ids()
+    st.session_state.query_list = []
     st.session_state.available_tags = load_tags()
 
     # Ensure retrieval_failure tag exists
@@ -410,8 +470,83 @@ if "initialized" not in st.session_state:
 with st.sidebar:
     st.title("Response Evaluation")
     
-    # Progress stats
-    total_queries, annotated_queries = count_annotated_queries()
+    # ========================================
+    # Experiment/Run Selection
+    # ========================================
+    exp_ids = get_experiment_ids()
+    
+    if not exp_ids:
+        st.warning("No experiments found in experiments/ directory.")
+        st.stop()
+    
+    # Experiment selector
+    def on_exp_change():
+        new_exp = st.session_state.exp_selector
+        if new_exp != st.session_state.current_exp_id:
+            st.session_state.current_exp_id = new_exp
+            st.session_state.current_run_id = None
+            st.session_state.current_query_id = None
+            st.session_state.query_list = []
+    
+    current_exp_idx = 0
+    if st.session_state.current_exp_id in exp_ids:
+        current_exp_idx = exp_ids.index(st.session_state.current_exp_id)
+    else:
+        st.session_state.current_exp_id = exp_ids[0]
+    
+    st.selectbox(
+        "Experiment",
+        options=exp_ids,
+        index=current_exp_idx,
+        key="exp_selector",
+        on_change=on_exp_change
+    )
+    
+    # Run selector
+    run_ids = get_run_ids(st.session_state.current_exp_id)
+    
+    if not run_ids:
+        st.warning(f"No runs found for {st.session_state.current_exp_id}.")
+        st.stop()
+    
+    def on_run_change():
+        new_run = st.session_state.run_selector
+        if new_run != st.session_state.current_run_id:
+            st.session_state.current_run_id = new_run
+            st.session_state.current_query_id = None
+            # Reload query list for new run
+            st.session_state.query_list = load_all_query_ids(
+                st.session_state.current_exp_id, 
+                new_run
+            )
+    
+    current_run_idx = 0
+    if st.session_state.current_run_id in run_ids:
+        current_run_idx = run_ids.index(st.session_state.current_run_id)
+    else:
+        st.session_state.current_run_id = run_ids[0]
+        st.session_state.query_list = load_all_query_ids(
+            st.session_state.current_exp_id,
+            st.session_state.current_run_id
+        )
+    
+    st.selectbox(
+        "Run",
+        options=run_ids,
+        index=current_run_idx,
+        key="run_selector",
+        on_change=on_run_change
+    )
+    
+    st.divider()
+    
+    # ========================================
+    # Progress Stats
+    # ========================================
+    total_queries, annotated_queries = count_annotated_queries(
+        st.session_state.current_exp_id,
+        st.session_state.current_run_id
+    )
     
     col1, col2 = st.columns(2)
     col1.metric("Total Queries", total_queries)
@@ -423,7 +558,9 @@ with st.sidebar:
     
     st.divider()
     
-    # Query selector
+    # ========================================
+    # Query Navigation
+    # ========================================
     query_list = st.session_state.query_list
     
     if query_list:
@@ -486,11 +623,18 @@ with st.sidebar:
         # Video navigation
         st.divider()
 
-        current_result = load_query_result(st.session_state.current_query_id)
+        current_result = load_query_result(
+            st.session_state.current_exp_id,
+            st.session_state.current_run_id,
+            st.session_state.current_query_id
+        )
         if current_result:
             gold_video_id = current_result.get("gold_video_id")
             if gold_video_id:
-                unique_videos = get_unique_videos()
+                unique_videos = get_unique_videos(
+                    st.session_state.current_exp_id,
+                    st.session_state.current_run_id
+                )
                 if len(unique_videos) > 1 and gold_video_id in unique_videos:
                     current_video_idx = unique_videos.index(gold_video_id)
 
@@ -502,7 +646,11 @@ with st.sidebar:
                         if st.button("Prev Video ◀", use_container_width=True, key="nav_prev_video"):
                             new_video_idx = (current_video_idx - 1) % len(unique_videos)
                             new_video_id = unique_videos[new_video_idx]
-                            first_query = get_first_query_for_video(new_video_id)
+                            first_query = get_first_query_for_video(
+                                st.session_state.current_exp_id,
+                                st.session_state.current_run_id,
+                                new_video_id
+                            )
                             if first_query:
                                 st.session_state.current_query_id = first_query
                                 st.rerun()
@@ -511,19 +659,26 @@ with st.sidebar:
                         if st.button("Next Video ▶", use_container_width=True, key="nav_next_video"):
                             new_video_idx = (current_video_idx + 1) % len(unique_videos)
                             new_video_id = unique_videos[new_video_idx]
-                            first_query = get_first_query_for_video(new_video_id)
+                            first_query = get_first_query_for_video(
+                                st.session_state.current_exp_id,
+                                st.session_state.current_run_id,
+                                new_video_id
+                            )
                             if first_query:
                                 st.session_state.current_query_id = first_query
                                 st.rerun()
     else:
-        st.warning("No queries found. Run response generation first.")
+        st.warning("No queries found. Run an experiment first.")
 
     st.divider()
     
     # Export section
     st.subheader("Export")
     if st.button("📤 Export to CSV", use_container_width=True):
-        stats = export_to_csv()
+        stats = export_to_csv(
+            st.session_state.current_exp_id,
+            st.session_state.current_run_id
+        )
 
         if stats["total"] == 0:
             st.warning("No queries to export.")
@@ -543,10 +698,14 @@ with st.sidebar:
 # ============================================================================
 
 if st.session_state.current_query_id is None:
-    st.info("Select a query from the sidebar to begin.")
+    st.info("Select an experiment and run from the sidebar to begin.")
 else:
     query_id = st.session_state.current_query_id
-    result = load_query_result(query_id)
+    result = load_query_result(
+        st.session_state.current_exp_id,
+        st.session_state.current_run_id,
+        query_id
+    )
     
     if not result:
         st.error(f"Could not load query: {query_id}")
@@ -604,7 +763,13 @@ else:
                     if st.session_state.get(f"tag_{query_id}_{tag}", tag in current_tags):
                         selected_tags.append(tag)
                 
-                success = update_query_data(query_id, notes_input, selected_tags)
+                success = update_query_data(
+                    st.session_state.current_exp_id,
+                    st.session_state.current_run_id,
+                    query_id,
+                    notes_input,
+                    selected_tags
+                )
                 if success:
                     st.toast("Saved successfully!")
                 else:
@@ -827,4 +992,3 @@ else:
                         st.caption(f"RRF Score: {score:.4f}")
                 else:
                     st.caption("No results retrieved")
-

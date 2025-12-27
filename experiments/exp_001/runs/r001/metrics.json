@@ -1,0 +1,31 @@
+{
+  "exp_id": "exp_001",
+  "run_id": "r001",
+  "query_set_id": "qset_v01",
+  "split": "dev",
+  "query_count": 3,
+  "retrieval": {
+    "bm25": {
+      "recall@1": 0.3333333333333333,
+      "recall@3": 0.3333333333333333,
+      "mrr": 0.3333333333333333
+    },
+    "chroma": {
+      "recall@1": 0.3333333333333333,
+      "recall@3": 1.0,
+      "mrr": 0.611111111111111
+    },
+    "hybrid": {
+      "recall@1": 0.3333333333333333,
+      "recall@3": 0.6666666666666666,
+      "mrr": 0.5
+    }
+  },
+  "response": {
+    "gold_cited_rate": 0.6666666666666666,
+    "citation_precision": 1.0,
+    "refusal_rate": 0.0,
+    "avg_answer_length": 1269.3333333333333,
+    "avg_citation_count": 1.3333333333333333
+  }
+}
