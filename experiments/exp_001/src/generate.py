@@ -182,14 +182,6 @@ def _generate_split(split: str, run_id: str, max_queries: int | None = None) -> 
             "context_video_ids": hybrid_retrieved_ids,
             "answer": answer_response.answer,
             "citations": [c.model_dump() for c in answer_response.citations],
-            "metadata": {
-                "answer_length": len(answer_response.answer),
-                "citation_count": len(answer_response.citations),
-                "contains_refusal": any(
-                    phrase in answer_response.answer.lower()
-                    for phrase in ["cannot answer", "don't have enough", "insufficient"]
-                ),
-            },
         }
 
         response_results.append(response_result)
