@@ -2,30 +2,31 @@
   "exp_id": "exp_001",
   "run_id": "r001",
   "query_set_id": "qset_v01",
-  "split": "dev",
-  "query_count": 3,
+  "split": "dev+test",
+  "retrieval_query_count": 183,
+  "response_query_count": 50,
   "retrieval": {
     "bm25": {
-      "recall@1": 0.3333333333333333,
-      "recall@3": 0.3333333333333333,
-      "mrr": 0.3333333333333333
+      "recall@1": 0.1366,
+      "recall@3": 0.1639,
+      "mrr": 0.1466
     },
     "chroma": {
-      "recall@1": 0.3333333333333333,
-      "recall@3": 1.0,
-      "mrr": 0.611111111111111
+      "recall@1": 0.3770,
+      "recall@3": 0.6011,
+      "mrr": 0.4763
     },
     "hybrid": {
-      "recall@1": 0.3333333333333333,
-      "recall@3": 0.6666666666666666,
-      "mrr": 0.5
+      "recall@1": 0.3770,
+      "recall@3": 0.6339,
+      "mrr": 0.4927
     }
   },
   "response": {
-    "gold_cited_rate": 0.6666666666666666,
-    "citation_precision": 1.0,
-    "refusal_rate": 0.0,
-    "avg_answer_length": 1269.3333333333333,
-    "avg_citation_count": 1.3333333333333333
+    "gold_cited_rate": 0.7200,
+    "citation_precision": 1.0000,
+    "refusal_rate": 0.0200,
+    "avg_answer_length": 1635.6,
+    "avg_citation_count": 1.66
   }
 }
