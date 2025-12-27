@@ -1,0 +1,2 @@
+{"split": "dev", "bm25": {"recall@1": 0.2, "recall@3": 0.2, "mrr": 0.2}, "chroma": {"recall@1": 0.4, "recall@3": 1.0, "mrr": 0.6333333333333333}}
+{"split": "test", "bm25": {"recall@1": 0.2, "recall@3": 0.2, "mrr": 0.2}, "chroma": {"recall@1": 0.6, "recall@3": 1.0, "mrr": 0.8}}

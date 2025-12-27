@@ -1,6 +1,10 @@
-"""Retrieval evaluation metrics.
+"""Evaluation metrics for experiments.
 
-Standardized metrics for evaluating retrieval quality:
+Standard eval set (used by all experiments):
+- Retrieval: recall@1, recall@3, mrr
+- Response: (placeholder for future metrics)
+
+Low-level metrics:
 - recall@k: Whether gold item appears in top-k results
 - reciprocal_rank: 1/rank of gold item (MRR component)
 """
@@ -85,4 +89,63 @@ def compute_mrr(
         for r in results
     )
     return total_rr / len(results)
+
+
+# =============================================================================
+# Standard Eval Set
+# =============================================================================
+
+
+def compute_retrieval_metrics(
+    results: list[dict],
+    gold_key: str = "gold_video_id",
+    retrieved_key: str = "retrieved_ids",
+) -> dict:
+    """Compute standard retrieval metrics on final results.
+
+    Args:
+        results: List of result dicts with gold_video_id and retrieved_ids
+        gold_key: Key for gold video ID in each result
+        retrieved_key: Key for retrieved IDs list in each result
+
+    Returns:
+        Dict with recall@1, recall@3, mrr
+    """
+    return {
+        "recall@1": compute_recall(results, k=1, gold_key=gold_key, retrieved_key=retrieved_key),
+        "recall@3": compute_recall(results, k=3, gold_key=gold_key, retrieved_key=retrieved_key),
+        "mrr": compute_mrr(results, gold_key=gold_key, retrieved_key=retrieved_key),
+    }
+
+
+def compute_response_metrics(results: list[dict]) -> dict:
+    """Compute standard response metrics.
+
+    Args:
+        results: List of response result dicts
+
+    Returns:
+        Dict with response metrics (placeholder for now)
+    """
+    # TODO: implement response evals
+    return {}
+
+
+def compute_all_evals(
+    retrieval_results: list[dict],
+    response_results: list[dict] | None = None,
+) -> dict:
+    """Compute all standard evals for an experiment run.
+
+    Args:
+        retrieval_results: List of retrieval result dicts
+        response_results: Optional list of response result dicts
+
+    Returns:
+        Dict with retrieval and response metric sub-dicts
+    """
+    evals = {"retrieval": compute_retrieval_metrics(retrieval_results)}
+    if response_results:
+        evals["response"] = compute_response_metrics(response_results)
+    return evals
 
