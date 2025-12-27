@@ -1,12 +1,12 @@
 {
   "exp_id": "exp_001",
   "run_id": "r001",
-  "timestamp": "2025-12-27T17:09:34.687848Z",
-  "git_sha": "14294e5",
+  "timestamp": "2025-12-27T18:05:59.264434Z",
+  "git_sha": "81503c6",
   "git_dirty": true,
   "query_set_id": "qset_v01",
   "split": "test",
-  "query_count": 5,
+  "query_count": 42,
   "videos_db_path": "../../data/youtube/videos.db",
   "chroma_path": "../../data/youtube/chroma",
   "prompt_files": {
