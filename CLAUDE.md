@@ -86,7 +86,7 @@ streamlit run evals/analysis.py
 python -m evals.response.generate [--limit N]
 
 # View results with interactive Streamlit viewer
-streamlit run evals/response/viewer.py
+streamlit run evals/viewer.py
 ```
 
 ### 3. Answer Generation
@@ -139,7 +139,7 @@ Main notebook: `sandbox.ipynb`
 
 ### Streamlit Viewers
 - `evals/analysis.py` - Compare retrieval methods, filter by difficulty/query type
-- `evals/response/viewer.py` - Review generated answers and citations, tag responses, export error analysis
+- `evals/viewer.py` - Review generated answers and citations, tag responses, export error analysis
 - `utils/query_gen/viewer.py` - Browse generated queries
 
 ## Evaluation Data Files

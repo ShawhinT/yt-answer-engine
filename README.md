@@ -136,7 +136,7 @@ python -m evals.response.generate [--limit N]
 **View and analyze responses**:
 
 ```bash
-streamlit run evals/response/viewer.py
+streamlit run evals/viewer.py
 ```
 
 Features:
@@ -157,10 +157,10 @@ yt-answer-engine/
 ├── evals/                # Evaluation framework
 │   ├── evaluate.py       # Run retrieval benchmarks
 │   ├── analysis.py       # Streamlit retrieval viewer
+│   ├── viewer.py         # Streamlit response viewer
 │   ├── retrieval/        # Retrieval evaluation data
 │   └── response/         # Answer quality evaluation
-│       ├── generate.py   # Answer generation
-│       └── viewer.py     # Streamlit response viewer
+│       └── generate.py   # Answer generation
 ├── utils/                # Search implementations & tools
 │   ├── answer.py         # Answer generation API
 │   ├── search_bm25.py    # BM25 keyword search
