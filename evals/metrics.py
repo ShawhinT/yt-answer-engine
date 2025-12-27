@@ -30,10 +30,30 @@ def check_bad_framing(answer: str) -> bool:
     answer_lower = answer.lower()
 
     bad_patterns = [
-        "provided transcript",
-        "transcripts provided",
-        "transcript provided",
+        # Direct transcript/video references
+        "the transcript",
         "in the transcript",
+        "the video",
+        "in the video",
+
+        # "Provided" language
+        "provided transcript",
+        "transcript provided",
+        "transcripts provided",
+        "based on the provided",
+        "video transcripts provided",
+
+        # Prepositional phrases exposing retrieval
+        "based on the transcript",
+        "according to the transcript",
+        "from the transcript",
+        "based on the video",
+
+        # Meta-references to speakers/creators
+        "the creator",
+        "the speaker",
+        "the analyst",
+        "the walkthrough",
     ]
 
     for pattern in bad_patterns:
