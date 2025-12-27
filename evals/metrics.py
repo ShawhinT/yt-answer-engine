@@ -2,12 +2,63 @@
 
 Standard eval set (used by all experiments):
 - Retrieval: recall@1, recall@3, mrr
-- Response: (placeholder for future metrics)
+- Response: {check_name}_rate for all checks in RESPONSE_CHECKS
 
 Low-level metrics:
 - recall@k: Whether gold item appears in top-k results
 - reciprocal_rank: 1/rank of gold item (MRR component)
 """
+
+
+# =============================================================================
+# Response Quality Checks
+# =============================================================================
+
+
+def check_bad_framing(answer: str) -> bool:
+    """Check if response contains bad framing patterns.
+
+    Bad framing occurs when the model exposes internal retrieval architecture
+    or frames transcripts/context as something the user provided.
+
+    Args:
+        answer: The LLM-generated response text to check
+
+    Returns:
+        True if bad framing detected (FAIL), False if clean (PASS)
+    """
+    # TODO: User will provide specific string checking logic
+    # Placeholder implementation:
+    answer_lower = answer.lower()
+
+    bad_patterns = [
+        # Add specific phrases to check for here
+        # Examples:
+        # "provided transcript",
+        # "based on the context you",
+        # "according to the video you provided",
+    ]
+
+    for pattern in bad_patterns:
+        if pattern in answer_lower:
+            return True  # Bad framing detected
+
+    return False  # Clean response
+
+
+# Registry of all response quality checks
+# Add new checks here - they'll automatically be computed
+RESPONSE_CHECKS = {
+    "bad_framing": check_bad_framing,
+    # Future checks:
+    # "incomplete_answer": check_incomplete_answer,
+    # "citation_mismatch": check_citation_mismatch,
+}
+
+
+# =============================================================================
+# Retrieval Metrics
+# =============================================================================
 
 
 def recall_at_k(gold_id: str, retrieved_ids: list[str], k: int) -> int:
@@ -121,14 +172,26 @@ def compute_retrieval_metrics(
 def compute_response_metrics(results: list[dict]) -> dict:
     """Compute standard response metrics.
 
+    Automatically computes failure rates for all checks defined in RESPONSE_CHECKS.
+
     Args:
-        results: List of response result dicts
+        results: List of response result dicts with 'answer' field
 
     Returns:
-        Dict with response metrics (placeholder for now)
+        Dict with {check_name}_rate for each check (e.g., "bad_framing_rate")
     """
-    # TODO: implement response evals
-    return {}
+    if not results:
+        return {f"{name}_rate": 0.0 for name in RESPONSE_CHECKS}
+
+    metrics = {}
+    for check_name, check_fn in RESPONSE_CHECKS.items():
+        failure_count = sum(
+            1 for r in results
+            if check_fn(r.get("answer", ""))
+        )
+        metrics[f"{check_name}_rate"] = failure_count / len(results)
+
+    return metrics
 
 
 def compute_all_evals(

@@ -137,7 +137,7 @@ def compute_and_save_metrics(
 
 
 def update_registry(exp_id: str, run_id: str) -> None:
-    """Append or overwrite run in registry.jsonl.
+    """Append or overwrite run in registry.yaml.
 
     Reads experiment metadata and run metrics, then updates the registry.
     Only includes TEST split metrics (not dev).
@@ -149,7 +149,7 @@ def update_registry(exp_id: str, run_id: str) -> None:
     """
     exp_dir = EXPERIMENTS_DIR / exp_id
     run_dir = exp_dir / "runs" / run_id
-    registry_path = EXPERIMENTS_DIR / "registry.jsonl"
+    registry_path = EXPERIMENTS_DIR / "registry.yaml"
 
     # Read experiment.yaml for name/description
     exp_yaml_path = exp_dir / "experiment.yaml"
@@ -204,11 +204,17 @@ def update_registry(exp_id: str, run_id: str) -> None:
     # Read existing entries, filter out duplicate
     entries = []
     if registry_path.exists():
-        for line in registry_path.read_text().splitlines():
-            if line.strip():
-                entry = json.loads(line)
-                if (entry["exp_id"], entry["run_id"]) != (exp_id, run_id):
-                    entries.append(entry)
+        with open(registry_path) as f:
+            data = yaml.safe_load(f)
+            if data is None:
+                data = []
+            entries = data if isinstance(data, list) else []
+    
+    # Filter out duplicate entry if it exists
+    entries = [
+        entry for entry in entries
+        if (entry["exp_id"], entry["run_id"]) != (exp_id, run_id)
+    ]
 
     entries.append(run_data)
 
@@ -217,8 +223,7 @@ def update_registry(exp_id: str, run_id: str) -> None:
 
     # Write back
     with open(registry_path, "w") as f:
-        for entry in entries:
-            f.write(json.dumps(entry) + "\n")
+        yaml.dump(entries, f, default_flow_style=False, sort_keys=False)
 
     print(f"Updated registry: {exp_id}/{run_id}")
 
