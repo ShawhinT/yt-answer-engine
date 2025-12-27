@@ -3,7 +3,7 @@
 import sqlite3
 from pathlib import Path
 
-DB_PATH = Path("data/videos.db")
+DB_PATH = Path("data/youtube/videos.db")
 
 
 def init_db():

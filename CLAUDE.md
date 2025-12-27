@@ -26,12 +26,12 @@ This is a YouTube answer engine that answers technical questions using video tra
 ## Data Architecture
 
 ### Storage Layers
-- **SQLite** (`data/videos.db`): Primary store for video metadata and transcripts
+- **SQLite** (`data/youtube/videos.db`): Primary store for video metadata and transcripts
   - `videos` table: video_id (PK), title, transcript
   - `videos_fts` table: FTS5 virtual table for BM25 full-text search
   - Triggers keep FTS5 synced with videos table automatically
 
-- **ChromaDB** (`data/chroma/`): Vector store for semantic search
+- **ChromaDB** (`data/youtube/chroma/`): Vector store for semantic search
   - Uses cosine distance
   - Stores combined title+transcript as document
   - Default embedding model from ChromaDB (OpenAI text-embedding-ada-002)
@@ -164,6 +164,6 @@ Main notebook: `sandbox.ipynb`
 
 - All Python modules use relative imports from project root (e.g., `from data_ingestion.database import ...`)
 - Many scripts add project root to `sys.path` for imports
-- Database path is `data/videos.db` (absolute or relative from project root)
-- ChromaDB path is `data/chroma/` (PersistentClient)
+- Database path is `data/youtube/videos.db` (absolute or relative from project root)
+- ChromaDB path is `data/youtube/chroma/` (PersistentClient)
 - `.bak` files are automatically created when regenerating evaluation results

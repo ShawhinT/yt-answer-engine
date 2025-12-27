@@ -3,7 +3,7 @@
 import chromadb
 from pathlib import Path
 
-CHROMA_PATH = Path("data/chroma")
+CHROMA_PATH = Path("data/youtube/chroma")
 
 
 def _get_collection():

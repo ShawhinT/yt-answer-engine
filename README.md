@@ -174,8 +174,10 @@ yt-answer-engine/
 │   ├── answer_system.md  # Grounding & citation requirements
 │   └── answer_user.md    # User prompt template
 ├── data/                 # Storage (gitignored)
-│   ├── videos.db         # SQLite with FTS5
-│   └── chroma/           # ChromaDB vector store
+│   ├── youtube/          # YouTube-sourced data
+│   │   ├── videos.db     # SQLite with FTS5
+│   │   └── chroma/       # ChromaDB vector store
+│   └── queries/          # Query datasets
 ├── sandbox.ipynb         # Main development notebook
 ├── CLAUDE.md             # Detailed implementation docs
 └── README.md             # This file
