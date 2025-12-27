@@ -27,16 +27,13 @@ def check_bad_framing(answer: str) -> bool:
     Returns:
         True if bad framing detected (FAIL), False if clean (PASS)
     """
-    # TODO: User will provide specific string checking logic
-    # Placeholder implementation:
     answer_lower = answer.lower()
 
     bad_patterns = [
-        # Add specific phrases to check for here
-        # Examples:
-        # "provided transcript",
-        # "based on the context you",
-        # "according to the video you provided",
+        "provided transcript",
+        "transcripts provided",
+        "transcript provided",
+        "in the transcript",
     ]
 
     for pattern in bad_patterns:
