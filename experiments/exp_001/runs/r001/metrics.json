@@ -7,7 +7,7 @@
     "retrieval": {
       "recall@1": 0.2,
       "recall@3": 0.8,
-      "mrr": 0.4666666666666667
+      "mrr": 0.4333333333333333
     },
     "response": {},
     "extra": {

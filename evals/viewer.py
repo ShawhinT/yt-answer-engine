@@ -63,16 +63,32 @@ def get_csv_output_dir(exp_id: str, run_id: str) -> Path:
 def load_all_query_ids(exp_id: str, run_id: str) -> list[tuple[str, str]]:
     """
     Load all query IDs with their query text for navigation.
-    
+    Now filters to only include 'dev' split queries.
+
     Returns:
-        List of (query_id, query_text) tuples.
+        List of (query_id, query_text) tuples for dev split only.
     """
     queries = []
     jsonl_path = get_responses_path(exp_id, run_id)
-    
-    if not jsonl_path.exists():
+    retrieval_path = get_retrieval_path(exp_id, run_id)
+
+    if not jsonl_path.exists() or not retrieval_path.exists():
         return queries
-    
+
+    # Build a mapping of query_id -> split from retrieval.jsonl
+    query_splits = {}
+    with open(retrieval_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                record = json.loads(line)
+                query_splits[record["query_id"]] = record.get("split")
+            except (json.JSONDecodeError, KeyError):
+                continue
+
+    # Load queries from responses.jsonl, filtering by dev split
     with open(jsonl_path, 'r', encoding='utf-8') as f:
         for line in f:
             line = line.strip()
@@ -80,10 +96,13 @@ def load_all_query_ids(exp_id: str, run_id: str) -> list[tuple[str, str]]:
                 continue
             try:
                 record = json.loads(line)
-                queries.append((record["query_id"], record["query"]))
+                query_id = record["query_id"]
+                # Only include if split is 'dev'
+                if query_splits.get(query_id) == "dev":
+                    queries.append((query_id, record["query"]))
             except (json.JSONDecodeError, KeyError):
                 continue
-    
+
     return queries
 
 
@@ -267,18 +286,32 @@ def save_tags(tags: list[str]) -> None:
 
 def count_annotated_queries(exp_id: str, run_id: str) -> tuple[int, int]:
     """
-    Count total queries and queries with annotations.
-    
+    Count total queries and queries with annotations (dev split only).
+
     Returns:
         Tuple of (total_queries, annotated_queries).
     """
     total = 0
     annotated = 0
     jsonl_path = get_responses_path(exp_id, run_id)
-    
-    if not jsonl_path.exists():
+    retrieval_path = get_retrieval_path(exp_id, run_id)
+
+    if not jsonl_path.exists() or not retrieval_path.exists():
         return 0, 0
-    
+
+    # Build query_id -> split mapping
+    query_splits = {}
+    with open(retrieval_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                record = json.loads(line)
+                query_splits[record["query_id"]] = record.get("split")
+            except (json.JSONDecodeError, KeyError):
+                continue
+
     with open(jsonl_path, 'r', encoding='utf-8') as f:
         for line in f:
             line = line.strip()
@@ -286,19 +319,22 @@ def count_annotated_queries(exp_id: str, run_id: str) -> tuple[int, int]:
                 continue
             try:
                 record = json.loads(line)
-                total += 1
-                # Consider annotated if has notes or tags
-                if record.get("notes", "").strip() or record.get("tags", []):
-                    annotated += 1
+                query_id = record["query_id"]
+                # Only count dev split queries
+                if query_splits.get(query_id) == "dev":
+                    total += 1
+                    # Consider annotated if has notes or tags
+                    if record.get("notes", "").strip() or record.get("tags", []):
+                        annotated += 1
             except (json.JSONDecodeError, KeyError):
                 continue
-    
+
     return total, annotated
 
 
 def get_unique_videos(exp_id: str, run_id: str) -> list[str]:
     """
-    Get ordered list of unique gold_video_ids from all queries.
+    Get ordered list of unique gold_video_ids from dev split queries only.
 
     Returns:
         List of unique video IDs in order of first appearance.
@@ -306,9 +342,23 @@ def get_unique_videos(exp_id: str, run_id: str) -> list[str]:
     videos = []
     seen = set()
     jsonl_path = get_responses_path(exp_id, run_id)
+    retrieval_path = get_retrieval_path(exp_id, run_id)
 
-    if not jsonl_path.exists():
+    if not jsonl_path.exists() or not retrieval_path.exists():
         return videos
+
+    # Build query_id -> split mapping
+    query_splits = {}
+    with open(retrieval_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                record = json.loads(line)
+                query_splits[record["query_id"]] = record.get("split")
+            except (json.JSONDecodeError, KeyError):
+                continue
 
     with open(jsonl_path, 'r', encoding='utf-8') as f:
         for line in f:
@@ -317,10 +367,13 @@ def get_unique_videos(exp_id: str, run_id: str) -> list[str]:
                 continue
             try:
                 record = json.loads(line)
-                video_id = record.get("gold_video_id")
-                if video_id and video_id not in seen:
-                    videos.append(video_id)
-                    seen.add(video_id)
+                query_id = record["query_id"]
+                # Only include dev split queries
+                if query_splits.get(query_id) == "dev":
+                    video_id = record.get("gold_video_id")
+                    if video_id and video_id not in seen:
+                        videos.append(video_id)
+                        seen.add(video_id)
             except (json.JSONDecodeError, KeyError):
                 continue
 
@@ -361,7 +414,7 @@ def get_first_query_for_video(exp_id: str, run_id: str, gold_video_id: str) -> s
 
 def export_to_csv(exp_id: str, run_id: str) -> dict:
     """
-    Export all annotated queries to CSV with timestamp in filename.
+    Export all annotated queries to CSV with timestamp in filename (dev split only).
 
     Returns:
         Stats dictionary with export counts and file path.
@@ -370,6 +423,7 @@ def export_to_csv(exp_id: str, run_id: str) -> dict:
 
     jsonl_path = get_responses_path(exp_id, run_id)
     csv_output_dir = get_csv_output_dir(exp_id, run_id)
+    retrieval_path = get_retrieval_path(exp_id, run_id)
 
     # Load all tags for column headers
     all_tags = load_tags()
@@ -388,6 +442,23 @@ def export_to_csv(exp_id: str, run_id: str) -> dict:
                 results.append(record)
             except (json.JSONDecodeError, KeyError):
                 continue
+
+    # Load split information and filter to dev only
+    query_splits = {}
+    if retrieval_path.exists():
+        with open(retrieval_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    record = json.loads(line)
+                    query_splits[record["query_id"]] = record.get("split")
+                except (json.JSONDecodeError, KeyError):
+                    continue
+
+    # Filter results to dev split only
+    results = [r for r in results if query_splits.get(r["query_id"]) == "dev"]
 
     if not results:
         return {"total": 0, "annotated": 0, "path": None}
@@ -417,7 +488,7 @@ def export_to_csv(exp_id: str, run_id: str) -> dict:
 
     # Generate timestamped filename
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    csv_filename = f"error_analysis-{timestamp}.csv"
+    csv_filename = f"error_analysis-dev-{timestamp}.csv"
     csv_path = csv_output_dir / csv_filename
 
     # Write CSV
@@ -469,7 +540,8 @@ if "initialized" not in st.session_state:
 
 with st.sidebar:
     st.title("Response Evaluation")
-    
+    st.caption("📊 Viewing: dev split only")
+
     # ========================================
     # Experiment/Run Selection
     # ========================================

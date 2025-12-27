@@ -1,8 +1,8 @@
 {
   "exp_id": "exp_001",
   "run_id": "r001",
-  "timestamp": "2025-12-27T16:17:25.652588Z",
-  "git_sha": "06d7da0",
+  "timestamp": "2025-12-27T17:08:03.763112Z",
+  "git_sha": "14294e5",
   "git_dirty": true,
   "query_set_id": "qset_v01",
   "split": "test",
