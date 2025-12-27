@@ -208,9 +208,9 @@ def load_query_result(exp_id: str, run_id: str, query_id: str) -> dict | None:
 
                     # Auto-add retrieval_failure tag if gold video not retrieved
                     gold_video_id = record.get("gold_video_id")
-                    hybrid_retrieved = record.get("hybrid_retrieved_ids", [])
+                    context_video_ids = record.get("context_video_ids", [])
 
-                    if gold_video_id and gold_video_id not in hybrid_retrieved:
+                    if gold_video_id and gold_video_id not in context_video_ids:
                         if "retrieval_failure" not in record["tags"]:
                             record["tags"].append("retrieval_failure")
 
@@ -221,8 +221,9 @@ def load_query_result(exp_id: str, run_id: str, query_id: str) -> dict | None:
 
 
 def load_eval_metadata(exp_id: str, run_id: str, query_id: str) -> dict | None:
-    """
-    Load evaluation metadata for a query from retrieval.jsonl.
+    """Load evaluation metadata dynamically from retrieval.jsonl.
+
+    Automatically discovers and extracts data for any retrieval methods present.
 
     Args:
         exp_id: Experiment ID
@@ -244,23 +245,40 @@ def load_eval_metadata(exp_id: str, run_id: str, query_id: str) -> dict | None:
                 continue
             try:
                 record = json.loads(line)
-                if record["query_id"] == query_id:
-                    return {
-                        "query_type": record.get("query_type"),
-                        "difficulty": record.get("difficulty"),
-                        "split": record.get("split"),
-                        # BM25 results
-                        "bm25_retrieved_ids": record.get("bm25_retrieved_ids", []),
-                        "bm25_scores": record.get("bm25_scores", []),
-                        "bm25_gold_rank": record.get("bm25_gold_rank", -1),
-                        # Chroma results
-                        "chroma_retrieved_ids": record.get("chroma_retrieved_ids", []),
-                        "chroma_scores": record.get("chroma_scores", []),
-                        "chroma_gold_rank": record.get("chroma_gold_rank", -1),
-                        # Hybrid results
-                        "hybrid_scores": record.get("hybrid_scores", []),
-                        "hybrid_gold_rank": record.get("hybrid_gold_rank", -1),
-                    }
+                if record["query_id"] != query_id:
+                    continue
+
+                # Start with root-level metadata
+                metadata = {
+                    "split": record.get("split"),
+                }
+
+                # Dynamically extract data for each method
+                gold_video_id = record.get("gold_video_id")
+                methods = record.get("methods", {})
+
+                for method_name, method_data in methods.items():
+                    retrieved = method_data.get("retrieved", [])
+
+                    # Extract video IDs and scores
+                    video_ids = [item["video_id"] for item in retrieved]
+                    scores = [item["score"] for item in retrieved]
+
+                    # Calculate gold rank (1-indexed, -1 if not found)
+                    gold_rank = -1
+                    if gold_video_id and video_ids:
+                        try:
+                            gold_rank = video_ids.index(gold_video_id) + 1
+                        except ValueError:
+                            gold_rank = -1
+
+                    # Add to metadata with dynamic keys
+                    metadata[f"{method_name}_retrieved_ids"] = video_ids
+                    metadata[f"{method_name}_scores"] = scores
+                    metadata[f"{method_name}_gold_rank"] = gold_rank
+
+                return metadata
+
             except (json.JSONDecodeError, KeyError):
                 continue
 
@@ -959,10 +977,10 @@ else:
             else:
                 st.caption("No citations available")
             
-            # Also show hybrid_retrieved_ids if different from citations
-            retrieved_ids = result.get("hybrid_retrieved_ids", [])
+            # Also show context_video_ids if different from citations
+            context_video_ids = result.get("context_video_ids", [])
             citation_ids = [c.get("video_id") for c in citations]
-            extra_ids = [vid for vid in retrieved_ids if vid not in citation_ids]
+            extra_ids = [vid for vid in context_video_ids if vid not in citation_ids]
             
             if extra_ids:
                 st.caption("Other retrieved (not cited):")
@@ -1064,81 +1082,42 @@ else:
         with st.expander("📊 Retrieval Results", expanded=False):
             st.caption("Comparison of retrieval results from different search methods.")
 
-            # Create three columns for BM25, Chroma, and Hybrid
-            col_bm25, col_chroma, col_hybrid = st.columns(3)
+            # Discover what methods are available from the result data
+            method_names = []
+            for key in result.keys():
+                if key.endswith('_retrieved_ids'):
+                    method_name = key.replace('_retrieved_ids', '')
+                    method_names.append(method_name)
 
-            gold_video_id = result.get("gold_video_id")
+            if not method_names:
+                st.info("No retrieval methods found in data.")
+            else:
+                # Create dynamic columns based on available methods
+                cols = st.columns(len(method_names))
+                gold_video_id = result.get("gold_video_id")
 
-            # BM25 Column
-            with col_bm25:
-                st.subheader("BM25")
-                bm25_ids = result.get("bm25_retrieved_ids", [])
-                bm25_scores = result.get("bm25_scores", [])
-                bm25_gold_rank = result.get("bm25_gold_rank", -1)
+                for col, method_name in zip(cols, method_names):
+                    with col:
+                        # Display method name (capitalize for readability)
+                        st.subheader(method_name.upper())
 
-                if bm25_ids:
-                    for rank, (vid, score) in enumerate(zip(bm25_ids, bm25_scores), 1):
-                        video = get_video_by_id(vid)
-                        title = video.get("title", vid) if video else vid
+                        retrieved_ids = result.get(f"{method_name}_retrieved_ids", [])
+                        scores = result.get(f"{method_name}_scores", [])
+                        gold_rank = result.get(f"{method_name}_gold_rank", -1)
 
-                        # Check if this is the gold video
-                        is_gold = (vid == gold_video_id)
-                        rank_label = f"#{rank}"
+                        if retrieved_ids:
+                            for rank, (vid, score) in enumerate(zip(retrieved_ids, scores), 1):
+                                video = get_video_by_id(vid)
+                                title = video.get("title", vid) if video else vid
 
-                        # Format display
-                        if is_gold:
-                            st.markdown(f"**{rank_label} ⭐** [{title}](https://youtube.com/watch?v={vid})")
+                                is_gold = (vid == gold_video_id)
+                                rank_label = f"#{rank}"
+
+                                if is_gold:
+                                    st.markdown(f"**{rank_label} ⭐** [{title}](https://youtube.com/watch?v={vid})")
+                                else:
+                                    st.markdown(f"{rank_label} [{title}](https://youtube.com/watch?v={vid})")
+
+                                st.caption(f"Score: {score:.4f}")
                         else:
-                            st.markdown(f"{rank_label} [{title}](https://youtube.com/watch?v={vid})")
-
-                        st.caption(f"Score: {score:.4f}")
-                else:
-                    st.caption("No results retrieved")
-
-            # Chroma Column
-            with col_chroma:
-                st.subheader("Chroma")
-                chroma_ids = result.get("chroma_retrieved_ids", [])
-                chroma_scores = result.get("chroma_scores", [])
-                chroma_gold_rank = result.get("chroma_gold_rank", -1)
-
-                if chroma_ids:
-                    for rank, (vid, score) in enumerate(zip(chroma_ids, chroma_scores), 1):
-                        video = get_video_by_id(vid)
-                        title = video.get("title", vid) if video else vid
-
-                        is_gold = (vid == gold_video_id)
-                        rank_label = f"#{rank}"
-
-                        if is_gold:
-                            st.markdown(f"**{rank_label} ⭐** [{title}](https://youtube.com/watch?v={vid})")
-                        else:
-                            st.markdown(f"{rank_label} [{title}](https://youtube.com/watch?v={vid})")
-
-                        st.caption(f"Distance: {score:.4f}")
-                else:
-                    st.caption("No results retrieved")
-
-            # Hybrid Column
-            with col_hybrid:
-                st.subheader("Hybrid (RRF)")
-                hybrid_ids = result.get("hybrid_retrieved_ids", [])
-                hybrid_scores = result.get("hybrid_scores", [])
-                hybrid_gold_rank = result.get("hybrid_gold_rank", -1)
-
-                if hybrid_ids:
-                    for rank, (vid, score) in enumerate(zip(hybrid_ids, hybrid_scores), 1):
-                        video = get_video_by_id(vid)
-                        title = video.get("title", vid) if video else vid
-
-                        is_gold = (vid == gold_video_id)
-                        rank_label = f"#{rank}"
-
-                        if is_gold:
-                            st.markdown(f"**{rank_label} ⭐** [{title}](https://youtube.com/watch?v={vid})")
-                        else:
-                            st.markdown(f"{rank_label} [{title}](https://youtube.com/watch?v={vid})")
-
-                        st.caption(f"RRF Score: {score:.4f}")
-                else:
-                    st.caption("No results retrieved")
+                            st.caption("No results retrieved")
