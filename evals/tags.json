@@ -2,6 +2,6 @@
   "retrieval_failure",
   "bad_framing",
   "complex_language",
-  "too_technical"
+  "too_technical",
+  "bad_narrative"
 ]
-
