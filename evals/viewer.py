@@ -51,6 +51,11 @@ def get_retrieval_path(exp_id: str, run_id: str) -> Path:
     return EXPERIMENTS_DIR / exp_id / "runs" / run_id / "retrieval.jsonl"
 
 
+def get_run_receipt_path(exp_id: str, run_id: str) -> Path:
+    """Get path to run_receipt.json for a specific experiment run."""
+    return EXPERIMENTS_DIR / exp_id / "runs" / run_id / "run_receipt.json"
+
+
 def get_csv_output_dir(exp_id: str, run_id: str) -> Path:
     """Get CSV output directory for a specific experiment run."""
     return EXPERIMENTS_DIR / exp_id / "runs" / run_id
@@ -59,6 +64,60 @@ def get_csv_output_dir(exp_id: str, run_id: str) -> Path:
 # ============================================================================
 # Core I/O Functions
 # ============================================================================
+
+def load_query_set_id(exp_id: str, run_id: str) -> str | None:
+    """Load query set ID from run_receipt.json.
+
+    Returns:
+        Query set ID (e.g., 'qset_v01') or None if not found.
+    """
+    receipt_path = get_run_receipt_path(exp_id, run_id)
+
+    if not receipt_path.exists():
+        return None
+
+    try:
+        with open(receipt_path, 'r', encoding='utf-8') as f:
+            receipt = json.load(f)
+            return receipt.get("query_set_id")
+    except (json.JSONDecodeError, IOError):
+        return None
+
+
+def load_query_metadata_from_csv(query_set_id: str, query_id: str) -> dict | None:
+    """Load query metadata (query_type, difficulty, etc.) from queries CSV.
+
+    Args:
+        query_set_id: Query set ID (e.g., 'qset_v01')
+        query_id: Query ID to look up
+
+    Returns:
+        Dict with metadata fields or None if not found.
+    """
+    if not query_set_id:
+        return None
+
+    csv_path = PROJECT_ROOT / "data" / "queries" / query_set_id / "queries.csv"
+
+    if not csv_path.exists():
+        return None
+
+    try:
+        with open(csv_path, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row.get("query_id") == query_id:
+                    return {
+                        "query_type": row.get("query_type"),
+                        "difficulty": row.get("difficulty"),
+                        "grounding": row.get("grounding"),
+                        "source": row.get("source"),
+                    }
+    except (IOError, KeyError):
+        pass
+
+    return None
+
 
 def load_all_query_ids(exp_id: str, run_id: str) -> list[tuple[str, str]]:
     """
@@ -139,6 +198,13 @@ def load_query_result(exp_id: str, run_id: str, query_id: str) -> dict | None:
                     eval_metadata = load_eval_metadata(exp_id, run_id, query_id)
                     if eval_metadata:
                         record.update(eval_metadata)
+
+                    # Load and merge CSV metadata (query_type, difficulty, etc.)
+                    query_set_id = load_query_set_id(exp_id, run_id)
+                    if query_set_id:
+                        csv_metadata = load_query_metadata_from_csv(query_set_id, query_id)
+                        if csv_metadata:
+                            record.update(csv_metadata)
 
                     # Auto-add retrieval_failure tag if gold video not retrieved
                     gold_video_id = record.get("gold_video_id")
@@ -475,6 +541,8 @@ def export_to_csv(exp_id: str, run_id: str) -> dict:
         row = {
             "query_id": record["query_id"],
             "query": record["query"],
+            "query_type": record.get("query_type", ""),
+            "difficulty": record.get("difficulty", ""),
             "response": record.get("answer", ""),
             "notes": record["notes"],
             "tags": ",".join(record["tags"]),
@@ -494,7 +562,7 @@ def export_to_csv(exp_id: str, run_id: str) -> dict:
     # Write CSV
     csv_output_dir.mkdir(parents=True, exist_ok=True)
 
-    fieldnames = ["query_id", "query", "response", "notes", "tags"]
+    fieldnames = ["query_id", "query", "query_type", "difficulty", "response", "notes", "tags"]
     fieldnames.extend([f"tag_{tag}" for tag in all_tags])
 
     with open(csv_path, 'w', newline='', encoding='utf-8') as f:
@@ -540,7 +608,17 @@ if "initialized" not in st.session_state:
 
 with st.sidebar:
     st.title("Response Evaluation")
-    st.caption("📊 Viewing: dev split only")
+
+    # Load and display query set ID
+    query_set_id = load_query_set_id(
+        st.session_state.current_exp_id,
+        st.session_state.current_run_id
+    ) if st.session_state.current_exp_id and st.session_state.current_run_id else None
+
+    if query_set_id:
+        st.caption(f"📊 Query Set: `{query_set_id}` • dev split only")
+    else:
+        st.caption("📊 Viewing: dev split only")
 
     # ========================================
     # Experiment/Run Selection
