@@ -1,30 +1,11 @@
 {
-  "exp_id": "exp_001",
+  "exp_id": "exp_002",
   "run_id": "r001",
-  "timestamp": "2025-12-27T18:05:59.264434Z",
-  "git_sha": "81503c6",
-  "git_dirty": true,
   "query_set_id": "qset_v01",
-  "split": "test",
-  "query_count": 42,
-  "videos_db_path": "../../data/youtube/videos.db",
-  "chroma_path": "../../data/youtube/chroma",
-  "prompt_files": {
-    "system": "prompts/answer_system.md",
-    "user": "prompts/answer_user.md"
+  "dev": {
+    "timestamp": "2025-12-27 18:05:59 UTC"
   },
-  "models": {
-    "embedding": "all-MiniLM-L6-v2",
-    "answer": "gpt-4.1-2025-04-14"
-  },
-  "config": {
-    "retrieval_methods": [
-      "bm25",
-      "chroma",
-      "hybrid"
-    ],
-    "response_method": "hybrid",
-    "response_limit": 3,
-    "rrf_k": 60
+  "test": {
+    "timestamp": "2025-12-27 18:05:59 UTC"
   }
 }

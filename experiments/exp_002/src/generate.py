@@ -193,36 +193,28 @@ def _generate_split(split: str, run_id: str, max_queries: int | None = None) -> 
     n = len(queries)
     print(f"\nWriting outputs to {run_dir}/")
 
-    # 1. Run receipt
-    run_receipt = {
-        "exp_id": "exp_001",
-        "run_id": run_id,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
-        "git_sha": git_info["sha"],
-        "git_dirty": git_info["dirty"],
-        "query_set_id": "qset_v01",
-        "split": split,
-        "query_count": n,
-        "videos_db_path": "../../data/youtube/videos.db",
-        "chroma_path": "../../data/youtube/chroma",
-        "prompt_files": {
-            "system": "prompts/answer_system.md",
-            "user": "prompts/answer_user.md",
-        },
-        "models": {
-            "embedding": "all-MiniLM-L6-v2",
-            "answer": "gpt-4.1-2025-04-14",
-        },
-        "config": {
-            "retrieval_methods": methods,
-            "response_method": "hybrid",
-            "response_limit": CONTEXT_LIMIT,
-            "rrf_k": 60,
-        },
+    # 1. Run receipt - read existing or create new
+    receipt_path = run_dir / "run_receipt.json"
+
+    if receipt_path.exists():
+        with open(receipt_path, "r") as f:
+            receipt = json.load(f)
+    else:
+        # Create base structure on first split
+        receipt = {
+            "exp_id": "exp_002",
+            "run_id": run_id,
+            "query_set_id": "qset_v01",
+        }
+
+    # Update split-specific data
+    receipt[split] = {
+        "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
     }
 
-    with open(run_dir / "run_receipt.json", "w") as f:
-        json.dump(run_receipt, f, indent=2)
+    # Write back
+    with open(receipt_path, "w") as f:
+        json.dump(receipt, f, indent=2)
 
     # 2. Retrieval results (append mode - files cleared at run start)
     with open(run_dir / "retrieval.jsonl", "a") as f:
