@@ -11,7 +11,7 @@ from openai import OpenAI
 from pydantic import BaseModel, Field
 
 # Add project root to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from data_ingestion.database import get_video_by_id
 
@@ -21,7 +21,7 @@ load_dotenv()
 # Paths
 EVAL_RESULTS_PATH = Path("evals/retrieval/data/eval_results.jsonl")
 OUTPUT_PATH = Path("evals/response/data/response_results.jsonl")
-PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
+PROMPTS_DIR = Path(__file__).parent.parent.parent / "prompts"
 
 
 # ============================================================================

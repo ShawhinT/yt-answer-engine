@@ -3,7 +3,7 @@
 import sys
 from pathlib import Path
 
-sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
 from data_ingestion.database import get_all_video_ids, get_video_by_id
 from evals.retrieval.query_gen.functions import (

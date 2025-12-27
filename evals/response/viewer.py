@@ -10,7 +10,7 @@ from pathlib import Path
 import streamlit as st
 
 # Add project root to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from data_ingestion.database import get_video_by_id
 
@@ -105,7 +105,7 @@ def load_eval_metadata(query_id: str) -> dict | None:
         Dictionary with query metadata and retrieval results, or None if not found.
         Includes: query_type, difficulty, split, and retrieval results for BM25, Chroma, and Hybrid.
     """
-    eval_path = Path(__file__).parent.parent / "evals" / "retrieval" / "data" / "eval_results.jsonl"
+    eval_path = Path(__file__).parent.parent / "retrieval" / "data" / "eval_results.jsonl"
 
     if not eval_path.exists():
         return None

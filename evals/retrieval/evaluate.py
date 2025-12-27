@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 # Add project root to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from utils.search_bm25 import search_with_scores as bm25_search
 from utils.search_chroma import search_with_scores as chroma_search
