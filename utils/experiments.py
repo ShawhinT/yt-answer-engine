@@ -17,7 +17,7 @@ from pathlib import Path
 
 import yaml
 
-from evals.metrics import compute_retrieval_metrics
+from evals.metrics import compute_retrieval_metrics, compute_response_metrics, compute_manual_label_rates
 
 # Project paths
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -60,6 +60,30 @@ def get_next_run_id(runs_dir: Path | str) -> str:
     return f"r{num:03d}"
 
 
+def get_latest_run_id(runs_dir: Path | str) -> str | None:
+    """Get the latest run ID from existing runs.
+
+    Scans the runs directory for existing run folders (r001, r002, etc.)
+    and returns the most recent one.
+
+    Args:
+        runs_dir: Path to the runs directory
+
+    Returns:
+        Latest run ID (e.g., "r005") or None if no runs exist
+    """
+    runs_dir = Path(runs_dir)
+
+    if not runs_dir.exists():
+        return None
+
+    existing = sorted(runs_dir.glob("r*"))
+    if not existing:
+        return None
+
+    return existing[-1].name  # e.g., "r005"
+
+
 def compute_and_save_metrics(
     exp_id: str,
     run_id: str,
@@ -79,6 +103,13 @@ def compute_and_save_metrics(
     if not retrieval_path.exists():
         print(f"Warning: {retrieval_path} not found, skipping metrics computation")
         return
+
+    # Load available tags for manual label computation
+    tags_path = PROJECT_ROOT / "evals" / "tags.json"
+    available_tags = []
+    if tags_path.exists():
+        with open(tags_path) as f:
+            available_tags = json.load(f)
 
     # Read retrieval results and group by split
     results_by_split: dict[str, list[dict]] = {}
@@ -102,6 +133,27 @@ def compute_and_save_metrics(
                     split = entry.pop("split", "unknown")
                     extra_evals[split] = entry
 
+    # Build query_id -> split mapping from retrieval results
+    query_id_to_split = {}
+    for split, results in results_by_split.items():
+        for result in results:
+            query_id_to_split[result["query_id"]] = split
+
+    # Read responses.jsonl and group by split using the mapping
+    responses_by_split: dict[str, list[dict]] = {}
+    responses_path = run_dir / "responses.jsonl"
+    if responses_path.exists():
+        with open(responses_path) as f:
+            for line in f:
+                if line.strip():
+                    response = json.loads(line)
+                    # Get split from query_id mapping
+                    query_id = response.get("query_id")
+                    split = query_id_to_split.get(query_id, "unknown")
+                    if split not in responses_by_split:
+                        responses_by_split[split] = []
+                    responses_by_split[split].append(response)
+
     # Read run_receipt for metadata
     receipt_path = run_dir / "run_receipt.json"
     receipt = {}
@@ -121,7 +173,11 @@ def compute_and_save_metrics(
         split_metrics = {
             "query_count": len(results),
             "retrieval": compute_retrieval_metrics(results),
-            "response": {},  # Placeholder for future response metrics
+            "response_auto": compute_response_metrics(responses_by_split.get(split, [])),
+            "response_manual": compute_manual_label_rates(
+                responses_by_split.get(split, []),
+                available_tags
+            ),
         }
         # Add extra evals for this split if present
         if split in extra_evals:
@@ -191,14 +247,14 @@ def update_registry(exp_id: str, run_id: str) -> None:
         description = " ".join(description.split())
 
     run_data = {
-        "timestamp": receipt.get("timestamp", ""),
+        "timestamp": receipt.get("test", {}).get("timestamp", ""),
         "exp_id": exp_id,
         "name": exp_config.get("name", ""),
         "description": description,
         "run_id": run_id,
         "query_set_id": metrics.get("query_set_id", ""),
         "retrieval": test_metrics.get("retrieval", {}),
-        "response": test_metrics.get("response", {}),
+        "response": test_metrics.get("response_auto", {}),  # Only auto labels in registry
     }
 
     # Read existing entries, filter out duplicate
@@ -232,6 +288,7 @@ def run_experiment(
     exp_id: str,
     run_id: str | None = None,
     max_queries: int | None = None,
+    no_outputs: bool = False,
 ) -> None:
     """Run a single experiment by ID.
 
@@ -239,36 +296,55 @@ def run_experiment(
         exp_id: Experiment identifier (e.g., "exp_001")
         run_id: Run identifier (e.g., "r001"). Auto-generated if not provided.
         max_queries: Maximum number of queries to process per split (default: all)
+        no_outputs: Skip output generation, only recompute metrics (default: False)
 
     Raises:
-        ValueError: If experiment directory or generate.py not found
+        ValueError: If experiment directory or generate.py not found (unless no_outputs=True)
     """
     exp_dir = EXPERIMENTS_DIR / exp_id
     if not exp_dir.exists():
         raise ValueError(f"Experiment directory not found: {exp_dir}")
 
-    generate_path = exp_dir / "src" / "generate.py"
-    if not generate_path.exists():
-        raise ValueError(f"Experiment generate.py not found: {generate_path}")
+    # Only check for generate.py if we're actually going to generate outputs
+    if not no_outputs:
+        generate_path = exp_dir / "src" / "generate.py"
+        if not generate_path.exists():
+            raise ValueError(f"Experiment generate.py not found: {generate_path}")
 
     runs_dir = exp_dir / "runs"
 
     # Auto-generate run ID if not provided
     if run_id is None:
-        run_id = get_next_run_id(runs_dir)
+        if no_outputs:
+            # In no-outputs mode, use the latest run
+            run_id = get_latest_run_id(runs_dir)
+            if run_id is None:
+                raise ValueError(f"No existing runs found in {runs_dir}. Cannot use --no-outputs without existing data.")
+        else:
+            run_id = get_next_run_id(runs_dir)
 
-    # Add experiment src directory to path for local imports
-    src_dir = exp_dir / "src"
-    if str(src_dir) not in sys.path:
-        sys.path.insert(0, str(src_dir))
+    # Verify run directory exists when in no-outputs mode
+    if no_outputs:
+        run_dir = runs_dir / run_id
+        if not run_dir.exists():
+            raise ValueError(f"Run directory not found: {run_dir}. Cannot use --no-outputs without existing data.")
 
-    # Dynamic import of experiment's generate module
-    spec = importlib.util.spec_from_file_location(f"{exp_id}.generate", generate_path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    # Skip generation if --no-outputs flag is set
+    if not no_outputs:
+        # Add experiment src directory to path for local imports
+        src_dir = exp_dir / "src"
+        if str(src_dir) not in sys.path:
+            sys.path.insert(0, str(src_dir))
 
-    # Generate outputs (retrieval, responses, extra metrics)
-    module.generate(run_id, max_queries)
+        # Dynamic import of experiment's generate module
+        spec = importlib.util.spec_from_file_location(f"{exp_id}.generate", generate_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        # Generate outputs (retrieval, responses, extra metrics)
+        module.generate(run_id, max_queries)
+    else:
+        print(f"Skipping output generation (--no-outputs mode)")
 
     # Compute standard metrics from output files and save metrics.json
     run_dir = runs_dir / run_id
@@ -281,12 +357,14 @@ def run_experiment(
 def run_all(
     run_id: str | None = None,
     max_queries: int | None = None,
+    no_outputs: bool = False,
 ) -> None:
     """Run all experiments with the same arguments.
 
     Args:
         run_id: Run identifier (e.g., "r001"). Auto-generated per experiment if not provided.
         max_queries: Maximum number of queries to process per split (default: all)
+        no_outputs: Skip output generation, only recompute metrics (default: False)
     """
     exp_ids = get_experiment_ids()
 
@@ -300,7 +378,7 @@ def run_all(
     for exp_id in exp_ids:
         print(f"\n>>> Running {exp_id}...")
         try:
-            run_experiment(exp_id, run_id, max_queries)
+            run_experiment(exp_id, run_id, max_queries, no_outputs)
         except Exception as e:
             print(f"ERROR running {exp_id}: {e}")
             continue
@@ -335,13 +413,18 @@ def main():
         default=None,
         help="Maximum number of queries to process per split (default: all)",
     )
+    parser.add_argument(
+        "--no-outputs",
+        action="store_true",
+        help="Skip output generation, only recompute metrics from existing files",
+    )
 
     args = parser.parse_args()
 
     if args.run_all:
-        run_all(args.run_id, args.max_queries)
+        run_all(args.run_id, args.max_queries, args.no_outputs)
     elif args.exp:
-        run_experiment(args.exp, args.run_id, args.max_queries)
+        run_experiment(args.exp, args.run_id, args.max_queries, args.no_outputs)
     else:
         parser.print_help()
         print("\nError: Must specify --exp EXP_ID or --all")

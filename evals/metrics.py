@@ -211,6 +211,30 @@ def compute_response_metrics(results: list[dict]) -> dict:
     return metrics
 
 
+def compute_manual_label_rates(results: list[dict], available_tags: list[str]) -> dict:
+    """Compute failure rates for manual tags from responses.
+
+    Args:
+        results: List of response result dicts with 'tags' field
+        available_tags: List of all possible tag names
+
+    Returns:
+        Dict with {tag_name}_rate for each tag (e.g., "bad_framing_rate")
+    """
+    if not results:
+        return {f"{tag}_rate": 0.0 for tag in available_tags}
+
+    metrics = {}
+    for tag in available_tags:
+        tagged_count = sum(
+            1 for r in results
+            if tag in r.get("tags", [])
+        )
+        metrics[f"{tag}_rate"] = tagged_count / len(results)
+
+    return metrics
+
+
 def compute_all_evals(
     retrieval_results: list[dict],
     response_results: list[dict] | None = None,

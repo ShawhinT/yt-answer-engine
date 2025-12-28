@@ -1,4 +1,4 @@
-- timestamp: '2025-12-27T17:57:45.771861Z'
+- timestamp: 2025-12-27 17:57:45 UTC
   exp_id: exp_001
   name: Baseline Hybrid RAG
   description: Establish baseline performance for hybrid retrieval (BM25 + semantic)
@@ -9,8 +9,9 @@
     recall@1: 0.40476190476190477
     recall@3: 0.6428571428571429
     mrr: 0.5238095238095238
-  response: {}
-- timestamp: '2025-12-27T18:05:59.264434Z'
+  response:
+    bad_framing_rate: 0.5
+- timestamp: 2025-12-27 18:05:59 UTC
   exp_id: exp_002
   name: Baseline Hybrid RAG
   description: Identitical to exp_001, but with a different system prompt. New prompt
@@ -22,4 +23,5 @@
     recall@1: 0.40476190476190477
     recall@3: 0.6428571428571429
     mrr: 0.5238095238095238
-  response: {}
+  response:
+    bad_framing_rate: 0.07142857142857142

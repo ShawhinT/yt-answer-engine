@@ -9,7 +9,16 @@
       "recall@3": 0.72,
       "mrr": 0.5766666666666667
     },
-    "response": {},
+    "response_auto": {
+      "bad_framing_rate": 0.08
+    },
+    "response_manual": {
+      "retrieval_failure_rate": 0.0,
+      "bad_framing_rate": 0.0,
+      "complex_language_rate": 0.0,
+      "too_technical_rate": 0.0,
+      "bad_narrative_rate": 0.0
+    },
     "extra": {
       "bm25": {
         "recall@1": 0.16,
@@ -30,7 +39,16 @@
       "recall@3": 0.6428571428571429,
       "mrr": 0.5238095238095238
     },
-    "response": {},
+    "response_auto": {
+      "bad_framing_rate": 0.07142857142857142
+    },
+    "response_manual": {
+      "retrieval_failure_rate": 0.0,
+      "bad_framing_rate": 0.0,
+      "complex_language_rate": 0.0,
+      "too_technical_rate": 0.0,
+      "bad_narrative_rate": 0.0
+    },
     "extra": {
       "bm25": {
         "recall@1": 0.16666666666666666,
