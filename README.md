@@ -75,25 +75,15 @@ python -m data_ingestion.ingest
 ```
 
 This will:
-- Fetch all video IDs from the hardcoded channel (see `data_ingestion/ingest.py:16` to modify)
+- Fetch all video IDs from the hardcoded channel (see `data_ingestion/ingest.py` to modify)
 - Filter out videos shorter than 50 seconds
 - Download transcripts via proxy with retry logic
 - Store in SQLite database
 - Rate limit to 1.05s between videos
 
-**Incremental update** (fetch only new videos):
+Note: Transcript syncing to ChromaDB is handled automatically by individual experiments.
 
-```bash
-python -m data_ingestion.update
-```
-
-**Sync to ChromaDB** (after database changes):
-
-```bash
-python -m data_ingestion.sync_chroma
-```
-
-### Retrieval Evaluation
+### Query Generation
 
 **Generate synthetic queries**:
 
@@ -103,37 +93,59 @@ python -m utils.query_gen.run
 
 Output: `data/queries/qset_v01/queries.csv`
 
-**Run retrieval benchmarks**:
+**Browse generated queries**:
 
 ```bash
-python -m evals.evaluate
+streamlit run utils/query_gen/viewer.py
 ```
 
-Output: `evals/retrieval/data/eval_results.jsonl`
+### Experiments
 
-**View results interactively**:
+The project uses a standardized experiment framework for running and comparing different retrieval and answer generation approaches. Each experiment is self-contained with its own configuration and outputs.
+
+**Run a specific experiment**:
 
 ```bash
-streamlit run evals/analysis.py
+python -m utils.experiments --exp exp_001 [--run-id r001] [--max-queries N]
+```
+
+**Run all experiments**:
+
+```bash
+python -m utils.experiments --all [--max-queries N]
+```
+
+**Recompute metrics without regenerating outputs**:
+
+```bash
+python -m utils.experiments --exp exp_001 --run-id r001 --no-outputs
+```
+
+Options:
+- `--exp`: Experiment ID to run (e.g., `exp_001`)
+- `--all`: Run all experiments sequentially
+- `--run-id`: Specific run ID (e.g., `r001`). Auto-generated if not provided
+- `--max-queries N`: Limit number of queries to process per split (useful for testing)
+- `--no-outputs`: Skip output generation, only recompute metrics from existing files
+
+**View experiment results**:
+
+```bash
+streamlit run experiments/viewer.py
 ```
 
 Features:
-- Compare BM25, ChromaDB, and Hybrid methods
-- Filter by query difficulty and type
-- View detailed metrics (MRR, Recall@K)
+- Compare multiple experiment runs side-by-side
+- View retrieval metrics (MRR, Recall@K) for dev and test splits
+- Track experiment metadata and configurations
+- Filter and sort by performance metrics
+- Results are automatically registered in `experiments/registry.yaml`
 
-### Response Evaluation
+See `experiments/contract.md` for the experiment data contract and requirements.
 
-**Generate answers** (uses hybrid retrieval by default):
+### Evaluation Viewer
 
-```bash
-python -m evals.response.generate [--limit N]
-```
-
-- `--limit N`: Process only first N queries (useful for testing)
-- Output: `evals/response/data/response_results.jsonl`
-
-**View and analyze responses**:
+**View detailed evaluation results**:
 
 ```bash
 streamlit run evals/viewer.py
@@ -144,6 +156,21 @@ Features:
 - Tag responses for quality assessment
 - Mark retrieval failures
 - Export error analysis to CSV
+- Compare answer quality across experiments
+
+### Interactive Chat UI
+
+**Launch chat interface**:
+
+```bash
+streamlit run ui/chat.py
+```
+
+Features:
+- Real-time question answering with citations
+- Multi-turn conversations
+- Label conversation traces with notes
+- Save traces to JSONL for analysis
 
 ## Project Structure
 
@@ -151,21 +178,33 @@ Features:
 yt-answer-engine/
 ├── data_ingestion/        # YouTube data fetching and storage
 │   ├── ingest.py         # Main ingestion (full channel)
-│   ├── update.py         # Incremental updates
-│   ├── sync_chroma.py    # Vector DB synchronization
 │   └── database.py       # SQLite operations
-├── evals/                # Evaluation framework
-│   ├── evaluate.py       # Run retrieval benchmarks
-│   ├── analysis.py       # Streamlit retrieval viewer
-│   ├── viewer.py         # Streamlit response viewer
-│   ├── retrieval/        # Retrieval evaluation data
-│   └── response/         # Answer quality evaluation
-│       └── generate.py   # Answer generation
-├── utils/                # Search implementations & tools
+├── experiments/          # Experiment framework
+│   ├── contract.md       # Experiment data contract
+│   ├── registry.yaml     # Experiment run registry
+│   ├── viewer.py         # Streamlit experiment comparison viewer
+│   └── exp_XXX/          # Individual experiments
+│       ├── experiment.yaml   # Experiment metadata
+│       ├── src/
+│       │   └── generate.py   # Main experiment script
+│       └── runs/         # Experiment run outputs
+│           └── {run_id}/
+│               ├── retrieval.jsonl    # Retrieval results
+│               ├── responses.jsonl    # Generated answers
+│               ├── metrics.json       # Computed metrics
+│               └── run_receipt.json   # Run metadata
+├── evals/                # Evaluation tools
+│   ├── viewer.py         # Streamlit evaluation viewer
+│   ├── metrics.py        # Metrics computation utilities
+│   └── tags.json         # Tag definitions for evaluation
+├── ui/                   # User interfaces
+│   └── chat.py           # Streamlit chat interface
+├── utils/                # Shared utilities
 │   ├── answer.py         # Answer generation API
-│   ├── search_bm25.py    # BM25 keyword search
-│   ├── search_chroma.py  # Semantic search
-│   ├── search_hybrid.py  # RRF hybrid search
+│   ├── models.py         # Pydantic models for responses
+│   ├── data.py           # Data loading utilities
+│   ├── git.py            # Git metadata utilities
+│   ├── experiments.py    # Experiment management utilities
 │   └── query_gen/        # Synthetic query generation
 │       ├── run.py        # Query generation workflow
 │       ├── functions.py  # Query generation logic
@@ -175,11 +214,10 @@ yt-answer-engine/
 │   └── answer_user.md    # User prompt template
 ├── data/                 # Storage (gitignored)
 │   ├── youtube/          # YouTube-sourced data
-│   │   ├── videos.db     # SQLite with FTS5
-│   │   └── chroma/       # ChromaDB vector store
+│   │   └── videos.db     # SQLite with FTS5
 │   └── queries/          # Query datasets
+│       └── qset_v01/     # Query set version 1
 ├── sandbox.ipynb         # Main development notebook
-├── CLAUDE.md             # Detailed implementation docs
 └── README.md             # This file
 ```
 
@@ -197,41 +235,41 @@ Required in `.env` file:
 
 ### Channel Configuration
 
-To ingest a different YouTube channel, edit the `CHANNEL_ID` constant in `data_ingestion/ingest.py:16`.
+To ingest a different YouTube channel, edit the `CHANNEL_ID` constant in `data_ingestion/ingest.py`.
 
 ### Model Configuration
 
 The system uses `gpt-4.1-2025-04-14` for both answer generation and query synthesis. To change the model, modify:
-- Answer generation: `utils/answer.py` and `response_eval/generate.py`
+- Answer generation: `utils/answer.py`
 - Query generation: `utils/query_gen/functions.py`
 
 ## Additional Information
-
-### Detailed Documentation
-
-For implementation details, data architecture, and development guidelines, see [`CLAUDE.md`](./CLAUDE.md).
 
 ### License
 
 This project is licensed under the Apache 2.0 License. See [`LICENSE`](./LICENSE) for details.
 
-### Search Method Comparison
+### Experiment Framework
 
-- **BM25**: Fast keyword-based search, good for exact term matches
-- **ChromaDB**: Semantic similarity search, good for conceptual matches
-- **Hybrid (RRF)**: Combines both methods using Reciprocal Rank Fusion (k=60), typically provides best results
+The project uses a standardized experiment framework to ensure reproducibility and comparability:
+- Each experiment follows a strict data contract (see `experiments/contract.md`)
+- Experiments are self-contained with their own configurations and code
+- All experiments output standardized formats for metrics and responses
+- The `utils/experiments.py` module provides shared utilities for metrics computation
 
 ### Data Files
 
-Evaluation data is stored in JSONL and CSV formats:
-- `data/queries/qset_v01/queries.csv` - Generated queries with splits
-- `evals/retrieval/data/eval_results.jsonl` - Retrieval benchmark results
-- `evals/response/data/response_results.jsonl` - Generated answers with citations
-- `evals/response/data/error_analysis-*.csv` - Tagged error analysis exports
+Key data files:
+- `data/queries/qset_v01/queries.csv` - Generated queries with dev/test splits
+- `experiments/*/runs/*/retrieval.jsonl` - Retrieval results per experiment run
+- `experiments/*/runs/*/responses.jsonl` - Generated answers with citations
+- `experiments/*/runs/*/metrics.json` - Computed evaluation metrics
+- `experiments/registry.yaml` - Registry of all experiment runs
+- `ui/data/chat_traces.jsonl` - Saved chat conversation traces
 
 ### Notes
 
 - All Python modules use relative imports from project root
-- Scripts automatically add project root to `sys.path` for imports
-- `.bak` files are created when regenerating evaluation results
+- Experiments automatically add project root to `sys.path` for imports
 - Transcript fetching uses exponential backoff for retry logic
+- The experiment viewer supports comparing multiple runs side-by-side
