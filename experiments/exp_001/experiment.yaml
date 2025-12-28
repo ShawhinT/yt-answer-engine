@@ -1,8 +1,7 @@
 exp_id: exp_001
 name: Baseline Hybrid RAG
 description: |
-  Establish baseline performance for hybrid retrieval (BM25 + semantic) 
-  with structured answer generation. Reference point for future experiments.
+  Hybrid retrieval (BM25 + semantic) with default settings.
 pipeline: |
   1. Retrieval (top 10 per method, merged to top 3 via RRF)
      - BM25: SQLite FTS5 on videos_fts table

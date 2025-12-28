@@ -1,8 +1,7 @@
 exp_id: exp_002
 name: Baseline Hybrid RAG
 description: |
-  Identitical to exp_001, but with a different system prompt. New prompt attempts to resolve bad framing failure where 
-  model references transcripts as if they were provided by the user.
+  exp_001, but different system prompt. Prompt attempts to resolve "bad framing" failure.
 pipeline: |
   1. Retrieval (top 10 per method, merged to top 3 via RRF)
      - BM25: SQLite FTS5 on videos_fts table
