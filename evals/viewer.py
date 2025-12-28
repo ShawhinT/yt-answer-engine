@@ -634,7 +634,7 @@ with st.sidebar:
     ) if st.session_state.current_exp_id and st.session_state.current_run_id else None
 
     if query_set_id:
-        st.caption(f"📊 Query Set: `{query_set_id}` • dev split only")
+        st.caption(f"📊 Query Set: `{query_set_id}`")
     else:
         st.caption("📊 Viewing: dev split only")
 
