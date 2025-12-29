@@ -209,9 +209,6 @@ yt-answer-engine/
 │       ├── run.py        # Query generation workflow
 │       ├── functions.py  # Query generation logic
 │       └── viewer.py     # Query browser
-├── prompts/              # LLM system prompts
-│   ├── answer_system.md  # Grounding & citation requirements
-│   └── answer_user.md    # User prompt template
 ├── data/                 # Storage (gitignored)
 │   ├── youtube/          # YouTube-sourced data
 │   │   └── videos.db     # SQLite with FTS5
