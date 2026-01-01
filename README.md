@@ -2,7 +2,7 @@
 
 AI-powered question answering system that grounds responses in YouTube video transcripts using hybrid retrieval and LLM synthesis. This system combines multiple retrieval methods (BM25 keyword search, semantic search via ChromaDB, and hybrid fusion) to find relevant video content, then uses OpenAI GPT-4.1 to generate accurate answers with inline citations. It includes a complete evaluation pipeline for benchmarking retrieval quality and answer accuracy.
 
-Resources
+**Resources:**
 - [Video Explainer](https://youtu.be/2peE6mwoiXs?si=dI-bjuZZJ6s1P2vx)
 
 ## Prerequisites
